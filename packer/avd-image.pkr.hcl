@@ -24,8 +24,9 @@ source "azure-arm" "avd" {
   image_sku       = "win11-24h2-avd-m365"
   image_version   = "latest"
   os_type         = "Windows"
-  vm_size =  "Standard_D2s_v4"
+  vm_size         = "Standard_D2s_v4"
 
+  # Communicator
   communicator      = "winrm"
   winrm_username    = "packer"
   winrm_password    = var.winrm_password
@@ -42,7 +43,7 @@ source "azure-arm" "avd" {
 build {
   sources = ["source.azure-arm.avd"]
 
-  
+  /*
   #### //// INSTALLING GREENSHOT using PADT Toolkit Package //// ####
   provisioner "file" {
     source      = "scripts/PADT-Greenshot"
@@ -53,7 +54,15 @@ build {
       "powershell.exe -ExecutionPolicy Bypass -NoProfile -File C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent" 
     ]
   }
+*/
 
+provisioner "powershell" {
+  inline = [
+    "Invoke-WebRequest -Uri 'https://github.com/<user>/packer-assets/releases/download/v1.0/PADT-Greenshot.zip' -OutFile 'C:\\Temp\\PADT-Greenshot.zip'",
+    "Expand-Archive -Path 'C:\\Temp\\PADT-Greenshot.zip' -DestinationPath 'C:\\Install\\Greenshot'",
+    "C:\\Install\\Greenshot\\Deploy-Application.ps1 -DeployMode Silent"
+  ]
+}
   #### //// INSTALLING CountrySwitch using PADT Toolkit Package //// ####
   provisioner "file" {
     source      = "scripts/PADT-CountrySwitch"
