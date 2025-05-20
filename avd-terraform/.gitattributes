@@ -1,0 +1,18 @@
+# Terraform files should always use Unix line endings (LF)
+*.tf text eol=lf
+*.tfvars text eol=lf
+*.hcl text eol=lf
+
+# JSON configuration files (used in variables or automation)
+*.json text eol=lf
+
+# Shell scripts for automation
+*.sh text eol=lf
+
+# PowerShell scripts (if used for provisioning or deployment)
+*.ps1 text eol=crlf
+
+# Ignore binary diffing for plan/output files
+*.zip binary
+*.plan binary
+*.log -text

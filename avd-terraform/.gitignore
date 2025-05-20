@@ -1,0 +1,32 @@
+# Terraform working directory and cache
+.terraform/
+.terraform.lock.hcl
+
+# Terraform state files
+*.tfstate
+*.tfstate.backup
+
+# Crash logs
+crash.log
+
+# Variable files (sensitive data!)
+*.tfvars
+*.tfvars.json
+
+# Override files (user-specific)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local execution artifacts
+plan.out
+*.log
+
+# Visual Studio Code / JetBrains / Mac system files
+.vscode/
+.idea/
+.DS_Store
+
+# OS-generated files
+Thumbs.db
