@@ -44,8 +44,8 @@ HASHICORP/
 
 
 
-##🔄 Workflow Overview
-##1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
+## 🔄 Workflow Overview
+## 1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
 
 ```cli
 cd avd-terraform
