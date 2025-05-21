@@ -44,28 +44,28 @@ HASHICORP/
 
 
 
-🔄 Workflow Overview
-1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
+##🔄 Workflow Overview
+##1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
 
 ```cli
 cd avd-terraform
 terraform init
 terraform apply -var-file="terraform.tfvars"
 ```
-Creates:
+##Creates:
 
 - Shared Image Gallery (SIG)
 - Host pool, workspace, app group
 - Outputs terraform.auto.pkvars.json for reuse in Packer
 
-2️⃣ Build Base Image
+##2️⃣ Build Base Image
 
 ```cli
 cd ../01-base-packer
 packer init .
 packer build avd-base-image.pkr.hcl
 ```
-This will:
+##This will:
 - Use the marketplace AVD image as base
 - Enable WinRM
 - Install language packs
@@ -73,21 +73,21 @@ This will:
 
 Save the image to SIG as version yyyy.mm.dd-base
 
-3️⃣ Build Application Image
+##3️⃣ Build Application Image
 ```cli
 cd ../02-appscustom-packer
 packer init .
 packer build avd-image.pkr.hcl
 
 ```
-This will:
+##This will:
 - Use the latest base image from SIG
 - Install software (via Chocolatey or PADT)
 - Optimize the image (VDOT, services, tasks)
 - Apply Windows Updates
 - Generalize and store the new image to SIG as version yyyy.mm.dd-apps
 
-🧰 Key Features
+##🧰 Key Features
    ✅ Separation of base and apps for faster monthly builds
    🔐 Secure variable handling via .auto.pkvars.json
    🧱 Shared Image Gallery integration with versioning
@@ -96,12 +96,12 @@ This will:
    🧪 CMTrace-compatible logging
    🛡️ Terraform-based infrastructure provisioning
 
-🧩 Next Steps
+##🧩 Next Steps
  - CI/CD Integration via GitHub Actions or Azure DevOps
  - Dynamic app selection and language installation
  - Image lifecycle automation & SIG cleanup
  - Role-based modular expansion (e.g., Office, dev tools, call centers)
 
-👨‍💻 Maintained by
+##👨‍💻 Maintained by
 Christoph Ramböck
 https://www.ramboeck-it.com
