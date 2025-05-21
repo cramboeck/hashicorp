@@ -15,8 +15,20 @@ source "azure-arm" "avd" {
 
   #location                           = var.location
   build_resource_group_name          = "packer-temp-rg"
-  managed_image_resource_group_name = var.sig_rg_name
-  managed_image_name                = var.sig_image_name
+  #managed_image_resource_group_name = var.sig_rg_name
+  #managed_image_name                = var.sig_image_name
+
+  shared_image_gallery_destination {
+    subscription = var.subscription_id
+    resource_group = var.sig_rg_name
+    gallery_name = var.sig_image_name  
+    image_name = var.sig_image_name
+    storage_account_type = "Standard_LRS" 
+    image_version = "1.0.1"
+        target_region {
+      name = "westeurope"
+    }
+  }
 
   # Basisimage (z. B. Windows 11 AVD mit M365)
   image_publisher = "MicrosoftWindowsDesktop"
