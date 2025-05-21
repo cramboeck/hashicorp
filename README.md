@@ -1,5 +1,5 @@
 
-🛠️ Azure Virtual Desktop Image Automation with Packer & Terraform
+### 🛠️ Azure Virtual Desktop Image Automation with Packer & Terraform
 
 This repository provides a modular and production-ready framework to automatically build Azure Virtual Desktop (AVD) images using Packer and provision infrastructure using Terraform. The solution separates the base OS image (language packs, WinRM) from customized application images, enabling clean versioning via a Shared Image Gallery (SIG) and monthly rebuilds.
 
