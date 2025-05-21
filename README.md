@@ -45,27 +45,27 @@ HASHICORP/
 
 
 ## 🔄 Workflow Overview
-## 1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
+### 1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
 
 ```cli
 cd avd-terraform
 terraform init
 terraform apply -var-file="terraform.tfvars"
 ```
-## Creates:
+#### Creates:
 
 - Shared Image Gallery (SIG)
 - Host pool, workspace, app group
 - Outputs terraform.auto.pkvars.json for reuse in Packer
 
-## 2️⃣ Build Base Image
+### 2️⃣ Build Base Image
 
 ```cli
 cd ../01-base-packer
 packer init .
 packer build avd-base-image.pkr.hcl
 ```
-## This will:
+#### This will:
 - Use the marketplace AVD image as base
 - Enable WinRM
 - Install language packs
