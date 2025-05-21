@@ -100,6 +100,7 @@ packer build avd-image.pkr.hcl
  - CI/CD Integration via GitHub Actions or Azure DevOps
  - Dynamic app selection and language installation
  - Image lifecycle automation & SIG cleanup
+ - Integration NeverRed 
  - Role-based modular expansion (e.g., Office, dev tools, call centers)
 
 ## 👨‍💻 Maintained by
