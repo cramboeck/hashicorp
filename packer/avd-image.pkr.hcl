@@ -68,7 +68,7 @@ provisioner "powershell" {
 provisioner "powershell" {
   inline = [
     # Download software archive from Blob (replace <SAS_URL> below)
-    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder?sp=r&st=2025-05-21T10:15:58Z&se=2025-06-06T18:15:58Z&spr=https&sv=2024-11-04&sr=c&sig=Cu7HYjWmoSES6yksGj0zDFgEzsOx9mSjFn7v%2BtNKZuI%3D' 'c:\\install\\PADT-Greenshot.zip' --recursive",
+    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/PADT-Greenshot.zip?sp=r&st=2025-05-21T10:47:08Z&se=2025-06-07T18:47:08Z&spr=https&sv=2024-11-04&sr=b&sig=8RFNUowi6kiipJ%2BM6Yt0iKtp6b5zSoDA%2FItWj2YfayA%3D' 'c:\\install\\PADT-Greenshot.zip' --recursive",
     # Extract the downloaded archive
     "Expand-Archive -Path 'c:\\install\\PADT-Greenshot.zip' -DestinationPath 'c:\\install' -Force",
     "C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
