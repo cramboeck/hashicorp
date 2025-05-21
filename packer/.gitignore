@@ -21,7 +21,6 @@
 # PowerShell Execution Output
 *.ps1xml
 *.psd1
-*.zip
 
 # Packer-Cache (nur bei lokalem Build relevant)
 packer_cache/

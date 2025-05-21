@@ -43,37 +43,48 @@ source "azure-arm" "avd" {
 build {
   sources = ["source.azure-arm.avd"]
 
-  /*
-  #### //// INSTALLING GREENSHOT using PADT Toolkit Package //// ####
-  provisioner "file" {
-    source      = "scripts/PADT-Greenshot"
-    destination = "C:/Install/"
-  }
-  provisioner "powershell" {
-    inline = [
-      "powershell.exe -ExecutionPolicy Bypass -NoProfile -File C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent" 
-    ]
-  }
-*/
+  #### //// INSTALLING AZCOPY to C:\install //// ####
 
 provisioner "powershell" {
   inline = [
-    "Invoke-WebRequest -Uri 'https://github.com/<user>/packer-assets/releases/download/v1.0/PADT-Greenshot.zip' -OutFile 'C:\\Temp\\PADT-Greenshot.zip'",
-    "Expand-Archive -Path 'C:\\Temp\\PADT-Greenshot.zip' -DestinationPath 'C:\\Install\\Greenshot'",
-    "C:\\Install\\Greenshot\\Deploy-Application.ps1 -DeployMode Silent"
-  ]
-}
-  #### //// INSTALLING CountrySwitch using PADT Toolkit Package //// ####
-  provisioner "file" {
-    source      = "scripts/PADT-CountrySwitch"
-    destination = "C:/Install/"
-  }
+    # Create folder structure
+    "New-Item -Path 'c:\\install' -ItemType Directory -Force | Out-Null",
 
-  provisioner "powershell" {
-    inline = [
-      "powershell.exe -ExecutionPolicy Bypass -NoProfile -File C:\\Install\\PADT-CountrySwitch\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent" 
+    # Download AzCopy
+    "Invoke-WebRequest -Uri 'https://aka.ms/downloadazcopy-v10-windows' -OutFile 'c:\\install\\azcopy.zip'",
+
+    # Extract AzCopy archive
+    "Expand-Archive -Path 'c:\\install\\azcopy.zip' -DestinationPath 'c:\\install' -Force",
+
+    # Move azcopy.exe to final path
+    "$azPath = Get-ChildItem -Path 'c:\\install\\azcopy_windows_amd64*\\azcopy.exe' -Recurse -ErrorAction Stop | Select-Object -ExpandProperty FullName",
+    "Copy-Item -Path $azPath -Destination 'c:\\install\\azcopy.exe' -Force",
+
     ]
   }
+
+  #### //// INSTALLING Greenshot using PADT Toolkit Package //// ####
+
+provisioner "powershell" {
+  inline = [
+    # Download software archive from Blob (replace <SAS_URL> below)
+    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder?sp=r&st=2025-05-21T10:15:58Z&se=2025-06-06T18:15:58Z&spr=https&sv=2024-11-04&sr=c&sig=Cu7HYjWmoSES6yksGj0zDFgEzsOx9mSjFn7v%2BtNKZuI%3D' 'c:\\install\\PADT-Greenshot.zip' --recursive",
+    # Extract the downloaded archive
+    "Expand-Archive -Path 'c:\\install\\PADT-Greenshot.zip' -DestinationPath 'c:\\install' -Force",
+    "C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
+  ]
+}
+
+  #### //// INSTALLING CountrySwitch using PADT Toolkit Package //// ####
+provisioner "powershell" {
+  inline = [
+    # Download software archive from Blob (replace <SAS_URL> below)
+    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/softwarerepo/PADT-CountrySwitch.zip?sp=r&st=2025-05-20T21:37:11Z&se=2025-05-21T05:37:11Z&spr=https&sv=2024-11-04&sr=b&sig=Ka87g71%2FtrK6BIrup1d%2BvlY2OBoFOto5V98AJuznCA8%3D' 'c:\\install\\PADT-CountrySwitch.zip' --recursive",
+    # Extract the downloaded archive
+    "Expand-Archive -Path 'c:\\install\\PADT-CountrySwitch.zip' -DestinationPath 'c:\\install' -Force",
+    "C:\\Install\\PADT-CountrySwitch\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
+  ]
+}
 
   # Cleanup Sources
   provisioner "powershell" {
