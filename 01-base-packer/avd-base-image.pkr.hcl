@@ -63,6 +63,11 @@ provisioner "powershell" {
     ]
   }
 
+ provisioner "powershell" {
+    script = "scripts/Enable-WinRM.ps1"
+  }
+  
+
   provisioner "powershell" {
     script = "scripts/install-WinLangPacks.ps1"
   }
