@@ -93,15 +93,21 @@ provisioner "powershell" {
     ]
   }
 
-
   # Default Provisioners in Powershell
   provisioner "powershell" {
     script = "scripts/install-software.ps1"
   }
 
-  provisioner "powershell" {
-    script = "scripts/install-vdot.ps1"
-  }
+  #### //// Download and installation for VDOT  //// ####
+provisioner "powershell" {
+  inline = [
+    # Download software archive from Blob (replace <SAS_URL> below)
+    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/VDOT.zip?sp=r&st=2025-05-21T14:21:19Z&se=2025-06-06T22:21:19Z&spr=https&sv=2024-11-04&sr=b&sig=%2B6R7lzU%2BIqTS%2FH9TsNONuSVz7WPKJO3h3hfiR9rIrIU%3D' 'c:\\install\\VDOT.zip' --recursive",
+    # Extract the downloaded archive
+    "Expand-Archive -Path 'c:\\install\\VDOT.zip' -DestinationPath 'c:\\install' -Force",
+    "C:\\Install\\VDOT\\Windows_VDOT.ps1 -AcceptEula -Optimizations All"
+  ]
+}
 
   provisioner "powershell" {
     script = "scripts/optimize.ps1"
@@ -115,7 +121,7 @@ provisioner "powershell" {
 
   provisioner "powershell" {
     inline = [
-      "Write-Host '📦 Starte Sysprep...'",
+      "Write-Host '[FINISHING] Starte Sysprep...'",
       "C:\\Windows\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /shutdown /quiet /mode:vm"
     ]
   }
