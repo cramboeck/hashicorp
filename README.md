@@ -39,6 +39,10 @@ HASHICORP/
 │   ├── outputs.tf
 │   └── terraform.tfvars
 
+```
+
+
+
 
 
 🚀 Getting Started
