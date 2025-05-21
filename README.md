@@ -44,72 +44,64 @@ HASHICORP/
 
 
 
+🔄 Workflow Overview
+1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
 
-🚀 Getting Started
-
-1. ✅ Prerequisites
-Azure CLI
-
-Terraform
-
-Packer
-
-A valid Azure subscription and Service Principal with the necessary rights
-
-2. 📦 Build Infrastructure
-bash
-Copy
-Edit
+```cli
 cd avd-terraform
 terraform init
-terraform plan -var-file="terraform.tfvars"
 terraform apply -var-file="terraform.tfvars"
-This will:
+```
+Creates:
 
-Create the AVD resource group, workspace, host pool, and application group
+- Shared Image Gallery (SIG)
+- Host pool, workspace, app group
+- Outputs terraform.auto.pkvars.json for reuse in Packer
 
-Create or update a Shared Image Gallery
+2️⃣ Build Base Image
 
-Generate terraform.auto.pkvars.json for use in Packer
-
-3. 🖼️ Build the Image
-bash
-Copy
-Edit
-cd ../packer
+```cli
+cd ../01-base-packer
 packer init .
-packer build .
+packer build avd-base-image.pkr.hcl
+```
 This will:
+- Use the marketplace AVD image as base
+- Enable WinRM
+- Install language packs
+- Generalize the VM with Sysprep
 
-Use terraform.auto.pkvars.json to fetch credentials and image settings
+Save the image to SIG as version yyyy.mm.dd-base
 
-Install apps using Chocolatey and PADT
+3️⃣ Build Application Image
+```cli
+cd ../02-appscustom-packer
+packer init .
+packer build avd-image.pkr.hcl
 
-Apply VDOT optimizations and Windows Updates
-
-Create a versioned image in the Shared Image Gallery
+```
+This will:
+- Use the latest base image from SIG
+- Install software (via Chocolatey or PADT)
+- Optimize the image (VDOT, services, tasks)
+- Apply Windows Updates
+- Generalize and store the new image to SIG as version yyyy.mm.dd-apps
 
 🧰 Key Features
-✅ Fully automated Terraform/Packer workflow
+   ✅ Separation of base and apps for faster monthly builds
+   🔐 Secure variable handling via .auto.pkvars.json
+   🧱 Shared Image Gallery integration with versioning
+   📦 PADT-ready for custom app deployments
+   🌍 Language pack provisioning with WinRM
+   🧪 CMTrace-compatible logging
+   🛡️ Terraform-based infrastructure provisioning
 
-🔐 Secure variable handling via terraform.tfvars and secrets
+🧩 Next Steps
+ - CI/CD Integration via GitHub Actions or Azure DevOps
+ - Dynamic app selection and language installation
+ - Image lifecycle automation & SIG cleanup
+ - Role-based modular expansion (e.g., Office, dev tools, call centers)
 
-🔄 Rebuildable and versioned SIG images for monthly rollouts
-
-🌍 Multi-language support via language pack module (planned)
-
-📦 PADT integration for consistent app deployments (e.g., Greenshot, Office)
-
-📈 Logging with CMTrace formatting
-
-📎 To-Do
- GitHub Actions or Azure DevOps CI/CD integration
-
- Dynamic multi-language installation
-
- Auto-cleanup and rollback on failure
-
- Enhanced modularity for reusable roles
-
-💡 Credits
-Created and maintained by Christoph Ramböck (Ramböck.IT)
+👨‍💻 Maintained by
+Christoph Ramböck
+https://www.ramboeck-it.com
