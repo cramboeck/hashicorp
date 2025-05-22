@@ -118,15 +118,15 @@ packer build avd-monthly.pkr.hcl
 
 
 ## 🧰 Key Features
-   ✅ Separation of base and apps for faster monthly builds
-   🔐 Secrets & credentials injected securely via .auto.pkvars.json
-   🧱 Shared Image Gallery integration with versioning (e.g. sig_name/image_name/2025.05.21)
-   📦 PADT-ready for custom app deployments
-   🌍 Language pack provisioning with WinRM
-   🪛 Easy debugging via packer-continue.txt
-   🧪 CMTrace-compatible logging
-   🛡️ Terraform-based infrastructure provisioning
-   ✅ Fully split Packer lifecycle (base → app → monthly)
+  - ✅ Separation of base and apps for faster monthly builds
+  - 🔐 Secrets & credentials injected securely via .auto.pkvars.json
+  - 🧱 Shared Image Gallery integration with versioning (e.g. sig_name/image_name/2025.05.21)
+  - 📦 PADT-ready for custom app deployments
+  - 🌍 Language pack provisioning with WinRM
+  - 🪛 Easy debugging via packer-continue.txt
+  - 🧪 CMTrace-compatible logging
+  - 🛡️ Terraform-based infrastructure provisioning
+  - ✅ Fully split Packer lifecycle (base → app → monthly)
   
 ## 🧩 Next Steps
  - CI/CD Integration via GitHub Actions or Azure DevOps
