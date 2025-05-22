@@ -19,9 +19,9 @@ source "azure-arm" "avd" {
 
   # Basisimage (z. B. Windows 11 AVD mit M365)
   image_publisher = "MicrosoftWindowsDesktop"
-  image_offer     = "office-365"
-  image_sku       = "win11-24h2-avd-m365"
-  image_version   = "latest"
+  #image_offer     = "office-365"
+  #image_sku       = "win11-24h2-avd-m365"
+  #image_version   = "latest"
 
 
   shared_image_gallery {
