@@ -136,5 +136,6 @@ packer build avd-monthly.pkr.hcl
  - Role-based modular expansion (e.g., Office, dev tools, call centers)
 
 ### 👨‍💻 Maintained by
-Developed and maintained by Christoph Ramböck – Ramböck.IT
+Developed and maintained by Christoph Ramböck – [Website](https://www.ramboeck-it.com)
+
 Professional AVD infrastructure & automation consulting
