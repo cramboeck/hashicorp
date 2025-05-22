@@ -28,7 +28,7 @@ source "azure-arm" "avd" {
     gallery_name = "avd_sig"  
     image_name = var.sig_image_name
     storage_account_type = "Standard_LRS" 
-    image_version = "2025-05-21"
+    image_version = "2025.05.22"
         target_region {
       name = "westeurope"
     }
@@ -41,6 +41,11 @@ source "azure-arm" "avd" {
   image_version   = "latest"
   os_type         = "Windows"
   vm_size         = "Standard_D2s_v4"
+
+
+  # Trusted Lunch settings
+  secure_boot_enabled = true
+  vtpm_enabled = true
 
   # Communicator
   communicator      = "winrm"
@@ -83,9 +88,13 @@ provisioner "powershell" {
     script = "scripts/Enable-WinRM.ps1"
   }
   
+  provisioner "file" {
+    source      = "data/languages.json"
+    destination = "C:/Install/languages.json"
+  }
 
   provisioner "powershell" {
-    script = "scripts/install-WinLangPacks.ps1"
+    script = "scripts/install-language.ps1"
   }
 
   provisioner "windows-restart" {}
