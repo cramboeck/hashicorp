@@ -1,14 +1,20 @@
+# 🛠️ Azure AVD Image Builder & Terraform Automation
+This repository provides a modular, production-grade automation framework for building and maintaining Azure Virtual Desktop (AVD) images using Packer and Terraform.
 
-# 🛠️ Azure Virtual Desktop Image Automation with Packer & Terraform
+## It follows best practices such as:
 
-This repository provides a modular and production-ready framework to automatically build Azure Virtual Desktop (AVD) images using Packer and provision infrastructure using Terraform. The solution separates the base OS image (language packs, WinRM) from customized application images, enabling clean versioning via a Shared Image Gallery (SIG) and monthly rebuilds.
+✨ Modular infrastructure-as-code via Terraform
+🖼️ Multi-stage image builds using Packer
+📦 Clean app layer separation with PowerShell App Deployment Toolkit (PADT) & Chocolatey
+🌍 Language Pack deployment and optimization
+🧪 CMTrace-compatible logging
+🔁 Monthly rebuilds with Shared Image Gallery versioning
+☁️ Optional integration with GitHub or Azure DevOps CI/CD
 
 
 ## 📁 Project Structure
 
 ```bash
-
-
 
 HASHICORP/
 ├── 01-base-packer/                # Builds the base image with language packs
@@ -31,6 +37,16 @@ HASHICORP/
 │       ├── Install_WindowsUpdates.ps1
 │       └── optimize.ps1
 │
+├── 03-monthly-packer/            # Monthly rebuild using latest SIG version
+│   ├── avd-monthly.pkr.hcl        # Uses SIG as base, applies updates and republish
+│   └── scripts/
+│       ├── Enable-WinRM.ps1
+│       ├── Install-Software.ps1
+│       ├── Install-VDOT.ps1
+│       ├── Install-MSOFFICE365.ps1
+│       ├── Install_WindowsUpdates.ps1
+│       └── optimize.ps1
+|
 ├── avd-terraform/                 # Terraform for SIG and AVD infra
 │   ├── modules/                   # Modularized infrastructure components
 │   ├── main.tf
@@ -87,15 +103,31 @@ packer build avd-image.pkr.hcl
 - Apply Windows Updates
 - Generalize and store the new image to SIG as version yyyy.mm.dd-apps
 
+## 3️⃣ Build Application Image
+```cli
+cd ../03-monthly-packer
+packer init .
+packer build avd-monthly.pkr.hcl
+
+```
+## This will:
+- Uses latest SIG version as base image
+- Applies Windows Updates, security patches, app updates
+- Optionally runs cleanup or re-optimization
+- Saves new version in SIG (e.g. 2025.06.01)
+
+
 ## 🧰 Key Features
    ✅ Separation of base and apps for faster monthly builds
-   🔐 Secure variable handling via .auto.pkvars.json
-   🧱 Shared Image Gallery integration with versioning
+   🔐 Secrets & credentials injected securely via .auto.pkvars.json
+   🧱 Shared Image Gallery integration with versioning (e.g. sig_name/image_name/2025.05.21)
    📦 PADT-ready for custom app deployments
    🌍 Language pack provisioning with WinRM
+   🪛 Easy debugging via packer-continue.txt
    🧪 CMTrace-compatible logging
    🛡️ Terraform-based infrastructure provisioning
-
+   ✅ Fully split Packer lifecycle (base → app → monthly)
+  
 ## 🧩 Next Steps
  - CI/CD Integration via GitHub Actions or Azure DevOps
  - Dynamic app selection and language installation
@@ -104,5 +136,5 @@ packer build avd-image.pkr.hcl
  - Role-based modular expansion (e.g., Office, dev tools, call centers)
 
 ## 👨‍💻 Maintained by
-Christoph Ramböck
-https://www.ramboeck-it.com
+Developed and maintained by Christoph Ramböck – Ramböck.IT
+Professional AVD infrastructure & automation consulting

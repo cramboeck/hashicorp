@@ -44,8 +44,10 @@ source "azure-arm" "avd" {
 
 
   # Trusted Lunch settings
+  security_type = "TrustedLaunch"
   secure_boot_enabled = true
   vtpm_enabled = true
+
 
   # Communicator
   communicator      = "winrm"
@@ -94,7 +96,7 @@ provisioner "powershell" {
   }
 
   provisioner "powershell" {
-    script = "scripts/install-language.ps1"
+    script = "scripts/install-languages.ps1"
   }
 
   provisioner "windows-restart" {}

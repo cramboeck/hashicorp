@@ -79,7 +79,7 @@ function Install-LanguagePack {
             for ($attempt = 1; $attempt -le 5; $attempt++) {
                 try {
                     Write-Log "Installing language pack: '$lang' (Attempt $attempt)..." "INFO"
-                    Install-Language -Language $lang -Force -ErrorAction Stop
+                    Install-Language -Language $lang 
                     Write-Log "Language pack '$lang' installed successfully." "INFO"
                     $success = $true
                     break
