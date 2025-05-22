@@ -60,28 +60,28 @@ HASHICORP/
 
 
 
-## 🔄 Workflow Overview
-### 1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
+# 🔄 Workflow Overview
+## 1️⃣ Provision Shared Image Gallery (SIG) & Infrastructure
 
 ```cli
 cd avd-terraform
 terraform init
 terraform apply -var-file="terraform.tfvars"
 ```
-#### Creates:
+### Creates:
 
 - Shared Image Gallery (SIG)
 - Host pool, workspace, app group
 - Outputs terraform.auto.pkvars.json for reuse in Packer
 
-### 2️⃣ Build Base Image
+## 2️⃣ Build Base Image
 
 ```cli
 cd ../01-base-packer
 packer init .
 packer build avd-base-image.pkr.hcl
 ```
-#### This will:
+### This will:
 - Use the marketplace AVD image as base
 - Enable WinRM
 - Install language packs
@@ -96,28 +96,28 @@ packer init .
 packer build avd-image.pkr.hcl
 
 ```
-## This will:
+### This will:
 - Use the latest base image from SIG
 - Install software (via Chocolatey or PADT)
 - Optimize the image (VDOT, services, tasks)
 - Apply Windows Updates
 - Generalize and store the new image to SIG as version yyyy.mm.dd-apps
 
-## 3️⃣ Monthly Packer / Update Build
+## 4️⃣ Monthly Packer / Update Build
 ```cli
 cd ../03-monthly-packer
 packer init .
 packer build avd-monthly.pkr.hcl
 
 ```
-## This will:
+### This will:
 - Uses latest SIG version as base image
 - Applies Windows Updates, security patches, app updates
 - Optionally runs cleanup or re-optimization
 - Saves new version in SIG (e.g. 2025.06.01)
 
 
-## 🧰 Key Features
+# 🧰 Key Features
    ✅ Separation of base and apps for faster monthly builds
    🔐 Secrets & credentials injected securely via .auto.pkvars.json
    🧱 Shared Image Gallery integration with versioning (e.g. sig_name/image_name/2025.05.21)
@@ -128,13 +128,13 @@ packer build avd-monthly.pkr.hcl
    🛡️ Terraform-based infrastructure provisioning
    ✅ Fully split Packer lifecycle (base → app → monthly)
   
-## 🧩 Next Steps
+# 🧩 Next Steps
  - CI/CD Integration via GitHub Actions or Azure DevOps
  - Dynamic app selection and language installation
  - Image lifecycle automation & SIG cleanup
  - Integration NeverRed 
  - Role-based modular expansion (e.g., Office, dev tools, call centers)
 
-## 👨‍💻 Maintained by
+### 👨‍💻 Maintained by
 Developed and maintained by Christoph Ramböck – Ramböck.IT
 Professional AVD infrastructure & automation consulting
