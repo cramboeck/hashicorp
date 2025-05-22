@@ -8,6 +8,8 @@ packer {
 }
 
 source "azure-arm" "avd" {
+
+  #Authentication variables
   client_id       = var.client_id
   client_secret   = var.client_secret
   tenant_id       = var.tenant_id
@@ -17,12 +19,13 @@ source "azure-arm" "avd" {
   build_resource_group_name          = "packer-temp-rg"
  
 
-  # Basisimage (z. B. Windows 11 AVD mit M365)
+  # Source Image definition 
   #image_publisher = "MicrosoftWindowsDesktop"
   #image_offer     = "office-365"
   #image_sku       = "win11-24h2-avd-m365"
   #image_version   = "latest"
-
+  #managed_image_resource_group_name = var.sig_rg_name
+  #managed_image_name                = var.sig_image_name
 
   shared_image_gallery {
     subscription = var.subscription_id
@@ -31,10 +34,9 @@ source "azure-arm" "avd" {
     image_name = var.sig_image_name
     image_version = var.sig_image_version
 }
-  #managed_image_resource_group_name = var.sig_rg_name
-  #managed_image_name                = var.sig_image_name
 
 
+# Image Galley Destination definition
     shared_image_gallery_destination {
     subscription = var.subscription_id
     resource_group = var.sig_rg_name
@@ -46,8 +48,6 @@ source "azure-arm" "avd" {
       name = "westeurope"
     }
   }
-
-
 
   # windows os & vm size 
   os_type         = "Windows"
@@ -70,7 +70,7 @@ source "azure-arm" "avd" {
 build {
   sources = ["source.azure-arm.avd"]
 
-  #### //// INSTALLING AZCOPY to C:\install //// ####
+  #### //// INSTALLING AZCOPY to C:\install or other Prerequisites  //// ####
 
 provisioner "powershell" {
   inline = [
@@ -90,7 +90,7 @@ provisioner "powershell" {
     ]
   }
 
-  #### //// INSTALLING Greenshot using PADT Toolkit Package //// ####
+  #### //// INSTALLING Greenshot using custom PADT Toolkit Package //// ####
 
 provisioner "powershell" {
   inline = [
@@ -102,7 +102,7 @@ provisioner "powershell" {
   ]
 }
 
-  #### //// INSTALLING CountrySwitch using PADT Toolkit Package //// ####
+  #### //// INSTALLING CountrySwitch using  custom PADT Toolkit Package //// ####
 provisioner "powershell" {
   inline = [
     # Download software archive from Blob (replace <SAS_URL> below)
@@ -125,28 +125,22 @@ provisioner "powershell" {
   ]
 }
 
-  # Cleanup Sources
-  provisioner "powershell" {
-    inline = [
-      "Remove-Item -Recurse -Force C:\\Install\\*"
-    ]
-  }
 
-  # Default Provisioners in Powershell
+  # Default Provisioners in Powershell using Chocolatey
   provisioner "powershell" {
     script = "scripts/install-software.ps1"
   }
 
   #### //// Download and installation for VDOT  //// ####
-provisioner "powershell" {
-  inline = [
-    # Download software archive from Blob (replace <SAS_URL> below)
-    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/VDOT.zip?sp=r&st=2025-05-21T14:21:19Z&se=2025-06-06T22:21:19Z&spr=https&sv=2024-11-04&sr=b&sig=%2B6R7lzU%2BIqTS%2FH9TsNONuSVz7WPKJO3h3hfiR9rIrIU%3D' 'c:\\install\\VDOT.zip' --recursive",
-    # Extract the downloaded archive
-    "Expand-Archive -Path 'c:\\install\\VDOT.zip' -DestinationPath 'c:\\install' -Force",
-    "C:\\Install\\VDOT\\Windows_VDOT.ps1 -AcceptEula -Optimizations All"
-  ]
-}
+  provisioner "powershell" {
+    inline = [
+      # Download software archive from Blob (replace <SAS_URL> below)
+      "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/VDOT.zip?sp=r&st=2025-05-21T14:21:19Z&se=2025-06-06T22:21:19Z&spr=https&sv=2024-11-04&sr=b&sig=%2B6R7lzU%2BIqTS%2FH9TsNONuSVz7WPKJO3h3hfiR9rIrIU%3D' 'c:\\install\\VDOT.zip' --recursive",
+      # Extract the downloaded archive
+      "Expand-Archive -Path 'c:\\install\\VDOT.zip' -DestinationPath 'c:\\install' -Force",
+      "C:\\Install\\VDOT\\Windows_VDOT.ps1 -AcceptEula -Optimizations All"
+    ]
+  }
 
   provisioner "powershell" {
     script = "scripts/optimize.ps1"
@@ -156,8 +150,16 @@ provisioner "powershell" {
   #  script = "scripts/windows-updates.ps1"
   #}
 
+  # Cleanup Sources
+  provisioner "powershell" {
+    inline = [
+      "Remove-Item -Recurse -Force C:\\Install\\*"
+    ]
+  }
+  # Restart the machine
   provisioner "windows-restart" {}
 
+  # Sysprep the machine
   provisioner "powershell" {
     inline = [
       "Write-Host '[FINISHING] Starte Sysprep...'",
