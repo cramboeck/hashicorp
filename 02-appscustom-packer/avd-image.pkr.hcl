@@ -35,6 +35,20 @@ source "azure-arm" "avd" {
   managed_image_name                = var.sig_image_name
 
 
+    shared_image_gallery_destination {
+    subscription = var.subscription_id
+    resource_group = var.sig_rg_name
+    gallery_name = "avd_sig"  
+    image_name = var.sig_image_name
+    storage_account_type = "Standard_LRS" 
+    image_version = "2025-05-21"
+        target_region {
+      name = "westeurope"
+    }
+  }
+
+
+
   # windows os & vm size 
   os_type         = "Windows"
   vm_size         = "Standard_D2s_v4"
