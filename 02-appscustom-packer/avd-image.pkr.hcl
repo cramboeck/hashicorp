@@ -15,14 +15,27 @@ source "azure-arm" "avd" {
 
   #location                           = var.location
   build_resource_group_name          = "packer-temp-rg"
-  managed_image_resource_group_name = var.sig_rg_name
-  managed_image_name                = var.sig_image_name
+ 
 
   # Basisimage (z. B. Windows 11 AVD mit M365)
   image_publisher = "MicrosoftWindowsDesktop"
   image_offer     = "office-365"
   image_sku       = "win11-24h2-avd-m365"
   image_version   = "latest"
+
+
+  shared_image_gallery {
+    subscription = var.subscription_id
+    resource_group = var.sig_rg_name
+    gallery_name = "avd_sig"
+    image_name = var.sig_image_name
+    image_version = var.sig_image_version
+}
+  managed_image_resource_group_name = var.sig_rg_name
+  managed_image_name                = var.sig_image_name
+
+
+  # windows os & vm size 
   os_type         = "Windows"
   vm_size         = "Standard_D2s_v4"
 
@@ -83,6 +96,18 @@ provisioner "powershell" {
     # Extract the downloaded archive
     "Expand-Archive -Path 'c:\\install\\PADT-CountrySwitch.zip' -DestinationPath 'c:\\install' -Force",
     "C:\\Install\\PADT-CountrySwitch\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
+  ]
+}
+
+  #### //// INSTALLING Microsoft 365 using C2R Custom Configuration - includes multiple languages //// ####
+
+provisioner "powershell" {
+  inline = [
+    # Download software archive from Blob (replace <SAS_URL> below)
+    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/PADT-Greenshot.zip?sp=r&st=2025-05-21T11:22:05Z&se=2025-05-29T19:22:05Z&spr=https&sv=2024-11-04&sr=b&sig=HfpGm%2Fk%2FLjDW9QuO%2FajcOFtdMf%2Bi7jSJtVk87KNkcUc%3D' 'c:\\install\\PADT-Greenshot.zip' --recursive",
+    # Extract the downloaded archive
+    "Expand-Archive -Path 'c:\\install\\PADT-Greenshot.zip' -DestinationPath 'c:\\install' -Force",
+    "C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
   ]
 }
 
