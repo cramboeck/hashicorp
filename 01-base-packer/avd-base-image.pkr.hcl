@@ -18,13 +18,17 @@ source "azure-arm" "avd" {
   #managed_image_resource_group_name = var.sig_rg_name
   #managed_image_name                = var.sig_image_name
 
+  #builder vm
+  temp_compute_name = "pkr-base-vm"
+  temp_nic_name = "pkr-base-vm-nic"
+
   shared_image_gallery_destination {
     subscription = var.subscription_id
     resource_group = var.sig_rg_name
     gallery_name = "avd_sig"  
     image_name = var.sig_image_name
     storage_account_type = "Standard_LRS" 
-    image_version = "1.0.1"
+    image_version = "2025-05-21"
         target_region {
       name = "westeurope"
     }
@@ -88,7 +92,7 @@ provisioner "powershell" {
 
   provisioner "powershell" {
     inline = [
-      "Write-Host '📦 Starte Sysprep...'",
+      "Write-Host '[FINISHING] Starte Sysprep...'",
       "C:\\Windows\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /shutdown /quiet /mode:vm"
     ]
   }
