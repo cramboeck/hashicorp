@@ -41,7 +41,7 @@ foreach ($code in $Global:LanguageCodes) {
 
 function Install-LanguagePack {
     BEGIN {
-        $workingDirectory = "C:\Install"
+        #$workingDirectory = "C:\Install"
         $timer = [System.Diagnostics.Stopwatch]::StartNew()
         Write-Log "Language installation started." "INFO"
 
