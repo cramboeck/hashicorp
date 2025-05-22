@@ -41,7 +41,7 @@ source "azure-arm" "avd" {
     gallery_name = "avd_sig"  
     image_name = var.sig_image_name
     storage_account_type = "Standard_LRS" 
-    image_version = "2025-05-21"
+    image_version = "1.0.2"
         target_region {
       name = "westeurope"
     }
