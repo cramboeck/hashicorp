@@ -3,13 +3,13 @@ This repository provides a modular, production-grade automation framework for bu
 
 ## It follows best practices such as:
 
-✨ Modular infrastructure-as-code via Terraform
-🖼️ Multi-stage image builds using Packer
-📦 Clean app layer separation with PowerShell App Deployment Toolkit (PADT) & Chocolatey
-🌍 Language Pack deployment and optimization
-🧪 CMTrace-compatible logging
-🔁 Monthly rebuilds with Shared Image Gallery versioning
-☁️ Optional integration with GitHub or Azure DevOps CI/CD
+- ✨ Modular infrastructure-as-code via Terraform
+- 🖼️ Multi-stage image builds using Packer
+- 📦 Clean app layer separation with PowerShell App Deployment Toolkit (PADT) & Chocolatey
+- 🌍 Language Pack deployment and optimization
+- 🧪 CMTrace-compatible logging
+- 🔁 Monthly rebuilds with Shared Image Gallery versioning
+- ☁️ Optional integration with GitHub or Azure DevOps CI/CD
 
 
 ## 📁 Project Structure
