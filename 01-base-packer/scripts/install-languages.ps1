@@ -12,9 +12,17 @@ function Write-Log {
         [Parameter(Mandatory)][string]$Message,
         [ValidateSet("INFO", "WARN", "ERROR")][string]$Level = "INFO"
     )
+
     $timestamp = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-    Write-Output "[$timestamp][$Level] $Message"
+    $output = "[$timestamp][$Level] $Message"
+
+    switch ($Level) {
+        "INFO"  { Write-Host $output -BackgroundColor DarkGreen -ForegroundColor White }
+        "WARN"  { Write-Host $output -BackgroundColor DarkYellow -ForegroundColor Black }
+        "ERROR" { Write-Host $output -BackgroundColor DarkRed -ForegroundColor White }
+    }
 }
+
 
 # Load JSON
 $jsonPath = "C:\Install\languages.json"
