@@ -103,7 +103,7 @@ packer build avd-image.pkr.hcl
 - Apply Windows Updates
 - Generalize and store the new image to SIG as version yyyy.mm.dd-apps
 
-## 3️⃣ Build Application Image
+## 3️⃣ Monthly Packer / Update Build
 ```cli
 cd ../03-monthly-packer
 packer init .
