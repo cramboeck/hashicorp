@@ -31,8 +31,8 @@ source "azure-arm" "avd" {
     image_name = var.sig_image_name
     image_version = var.sig_image_version
 }
-  managed_image_resource_group_name = var.sig_rg_name
-  managed_image_name                = var.sig_image_name
+  #managed_image_resource_group_name = var.sig_rg_name
+  #managed_image_name                = var.sig_image_name
 
 
     shared_image_gallery_destination {
