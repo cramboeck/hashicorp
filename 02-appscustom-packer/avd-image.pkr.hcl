@@ -118,13 +118,12 @@ provisioner "powershell" {
 provisioner "powershell" {
   inline = [
     # Download software archive from Blob (replace <SAS_URL> below)
-    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/PADT-Greenshot.zip?sp=r&st=2025-05-21T11:22:05Z&se=2025-05-29T19:22:05Z&spr=https&sv=2024-11-04&sr=b&sig=HfpGm%2Fk%2FLjDW9QuO%2FajcOFtdMf%2Bi7jSJtVk87KNkcUc%3D' 'c:\\install\\PADT-Greenshot.zip' --recursive",
+    "c:\\install\\azcopy.exe copy 'sp=r&st=2025-05-23T07:21:16Z&se=2025-06-07T15:21:16Z&spr=https&sv=2024-11-04&sr=b&sig=wKmzi1ySGarqvT1yaW6HMlH7nGtLkRqwMlZepzWakXI%3D' 'c:\\install\\PADT-Microsoft365.zip' --recursive",
     # Extract the downloaded archive
-    "Expand-Archive -Path 'c:\\install\\PADT-Greenshot.zip' -DestinationPath 'c:\\install' -Force",
-    "C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
+    "Expand-Archive -Path 'c:\\install\\PADT-Microsoft365.zip' -DestinationPath 'c:\\install' -Force",
+    "c:\\install\\PADT-Microsoft365\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
   ]
 }
-
 
   # Default Provisioners in Powershell using Chocolatey
   provisioner "powershell" {
@@ -142,9 +141,9 @@ provisioner "powershell" {
     ]
   }
 
-  provisioner "powershell" {
-    script = "scripts/optimize.ps1"
-  }
+  #provisioner "powershell" {
+  #  script = "scripts/optimize.ps1"
+  #}
 
   #provisioner "powershell" {
   #  script = "scripts/windows-updates.ps1"
