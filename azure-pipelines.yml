@@ -30,13 +30,18 @@ stages:
     steps:
     - checkout: self
 
+    - script: |
+        cd 01-base-packer
+        echo "{\n  \"client_id\": \"$(client-id)\",\n  \"client_secret\": \"$(client-secret)\",\n  \"tenant_id\": \"$(tenant-id)\",\n  \"subscription_id\": \"$(subscription-id)\",\n  \"winrm_password\": \"$(winrm-password)\",\n  \"sig_rg_name\": \"shared-image-gallery-rg\",\n  \"sig_image_name\": \"avd-golden\",\n  \"sig_image_version\": \"$(date_tag)\"\n}" > packer.auto.pkrvars.json
+      displayName: 'Generate secure packer.auto.pkrvars.json'
+
     - task: PowerShell@2
       displayName: 'Validate Packer Template'
       inputs:
         targetType: 'inline'
         pwsh: true
         script: |
-          cd 01-avd-image
+          cd 01-base-packer
           echo "##[group]Packer Validate"
           packer validate -var-file="packer.auto.pkrvars.json" .
           echo "##[endgroup]"
@@ -47,7 +52,7 @@ stages:
         targetType: 'inline'
         pwsh: true
         script: |
-          cd 01-avd-image
+          cd 01-base-packer
           echo "##[group]Packer Init"
           packer init .
           echo "##[endgroup]"
@@ -55,20 +60,11 @@ stages:
           echo "##[group]Packer Build with Logging"
           packer build -color=true -on-error=abort -var-file="packer.auto.pkrvars.json" . | Tee-Object -FilePath "packer.log"
           echo "##[endgroup]"
-      env:
-        PKR_VAR_client_id: $(client-id)
-        PKR_VAR_client_secret: $(client-secret)
-        PKR_VAR_tenant_id: $(tenant-id)
-        PKR_VAR_subscription_id: $(subscription-id)
-        PKR_VAR_winrm_password: $(winrm-password)
-        PKR_VAR_sig_rg_name: 'shared-image-gallery-rg'
-        PKR_VAR_sig_image_name: 'avd-golden'
-        PKR_VAR_sig_image_version: $(date_tag)
 
     - task: PublishBuildArtifacts@1
       displayName: 'Publish Packer Log Output'
       inputs:
-        PathtoPublish: '01-avd-image/packer.log'
+        PathtoPublish: '01-base-packer/packer.log'
         ArtifactName: 'packer-logs'
         publishLocation: 'Container'
 
