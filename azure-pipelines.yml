@@ -16,12 +16,23 @@ schedules:
 
 variables:
 - group: packer-secrets  # Variablen aus Key Vault verknüpfter Variable Group
-- name: date_tag
-  value: $[format('{0:yyyy}.{0:MM}.{0:dd}', pipeline.startTime)]
 
 stages:
+- stage: Init
+  displayName: 'Set fixed variables'
+  jobs:
+  - job: InitVars
+    displayName: 'Set static image version'
+    pool:
+      name: 'AVD-packer'
+    steps:
+    - script: |
+        echo "##vso[task.setvariable variable=date_tag]2025.05.24"
+      displayName: 'Set fixed date_tag variable'
+
 - stage: BuildAVDImage
   displayName: 'Build AVD Base Image with Packer'
+  dependsOn: Init
   jobs:
   - job: BuildImage
     displayName: 'Execute Packer Build'
@@ -32,10 +43,55 @@ stages:
 
     - script: |
         cd 01-base-packer
-        echo "{\n  \"client_id\": \"$(client-id)\",\n  \"client_secret\": \"$(client-secret)\",\n  \"tenant_id\": \"$(tenant-id)\",\n  \"subscription_id\": \"$(subscription-id)\",\n  \"winrm_password\": \"$(winrm-password)\",\n  \"sig_rg_name\": \"shared-image-gallery-rg\",\n  \"sig_image_name\": \"avd-golden\",\n  \"sig_image_version\": \"$(date_tag)\"\n}" > packer.auto.pkrvars.json
-      displayName: 'Generate secure packer.auto.pkrvars.json'
+        az config set extension.use_dynamic_install=yes_without_prompt
+        IMAGE_EXISTS=$(az sig image-version list \
+          --gallery-name avd_sig \
+          --gallery-image-definition avd-goldenimage \
+          --resource-group ramboeck-test-westeurope-rg \
+          --query "[?name=='2025.05.24'] | length(@)" -o tsv)
+
+        if [ "$IMAGE_EXISTS" != "0" ]; then
+          echo "Image version 2025.05.24 already exists. Skipping build."
+          echo "##vso[task.setvariable variable=skip_build]true"
+          exit 0
+        else
+          echo "##vso[task.setvariable variable=skip_build]false"
+        fi
+      displayName: 'Check if image version already exists'
 
     - task: PowerShell@2
+      displayName: 'Generate secure packer.auto.pkrvars.json (pwsh)'
+      inputs:
+        targetType: 'inline'
+        pwsh: true
+        script: |
+          $json = @{
+            client_id       = '$(client-id)'
+            client_secret   = '$(client-secret)'
+            tenant_id       = '$(tenant-id)'
+            subscription_id = '$(subscription-id)'
+            winrm_password  = '$(winrm-password)'
+            sig_rg_name     = 'ramboeck-test-westeurope-rg'
+            sig_image_name  = 'avd-goldenimage'
+            sig_name        = 'avd_sig'
+            sig_image_version = '2025.05.24'
+          } | ConvertTo-Json -Depth 2
+
+          Set-Content -Path "01-base-packer/packer.auto.pkrvars.json" -Value $json
+
+    - script: |
+        echo "##[group]System Diagnostics"
+        df -h
+        free -m
+        az account show
+        echo "Content of generated packer.auto.pkrvars.json:"
+        cat 01-base-packer/packer.auto.pkrvars.json
+        echo "##[endgroup]"
+      condition: ne(variables['skip_build'], 'true')
+      displayName: 'System & File Diagnostics'
+
+    - task: PowerShell@2
+      condition: ne(variables['skip_build'], 'true')
       displayName: 'Validate Packer Template'
       inputs:
         targetType: 'inline'
@@ -47,6 +103,7 @@ stages:
           echo "##[endgroup]"
 
     - task: PowerShell@2
+      condition: ne(variables['skip_build'], 'true')
       displayName: 'Run Packer Build'
       inputs:
         targetType: 'inline'
@@ -61,42 +118,15 @@ stages:
           packer build -color=true -on-error=abort -var-file="packer.auto.pkrvars.json" . | Tee-Object -FilePath "packer.log"
           echo "##[endgroup]"
 
+    - script: |
+        cd 01-base-packer
+        rm -f packer.auto.pkrvars.json
+      displayName: 'Cleanup packer.auto.pkrvars.json'
+
     - task: PublishBuildArtifacts@1
+      condition: ne(variables['skip_build'], 'true')
       displayName: 'Publish Packer Log Output'
       inputs:
         PathtoPublish: '01-base-packer/packer.log'
         ArtifactName: 'packer-logs'
         publishLocation: 'Container'
-
-- stage: DeployInfrastructure
-  displayName: 'Deploy AVD Infrastructure with Terraform'
-  dependsOn: BuildAVDImage
-  condition: succeeded()
-  jobs:
-  - job: TerraformApply
-    displayName: 'Terraform Apply'
-    pool:
-      name: 'AVD-packer'
-    steps:
-    - checkout: self
-
-    - script: |
-        if ! command -v terraform &>/dev/null; then
-          curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
-          unzip -o terraform.zip
-          sudo mv -f terraform /usr/local/bin/
-          rm terraform.zip
-        fi
-        terraform -version
-      displayName: 'Install Terraform CLI (with cache check)'
-
-    - script: |
-        cd 00-avd-terraform
-        terraform init
-        terraform apply -auto-approve
-      env:
-        ARM_CLIENT_ID: $(client-id)
-        ARM_CLIENT_SECRET: $(client-secret)
-        ARM_SUBSCRIPTION_ID: $(subscription-id)
-        ARM_TENANT_ID: $(tenant-id)
-      displayName: 'Run Terraform Apply'
