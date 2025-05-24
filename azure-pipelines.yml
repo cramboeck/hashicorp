@@ -42,22 +42,13 @@ stages:
     - checkout: self
 
     - script: |
-        cd 01-base-packer
-        az config set extension.use_dynamic_install=yes_without_prompt
-        IMAGE_EXISTS=$(az sig image-version list \
-          --gallery-name avd_sig \
-          --gallery-image-definition avd-goldenimage \
-          --resource-group ramboeck-test-westeurope-rg \
-          --query "[?name=='2025.05.22'] | length(@)" -o tsv)
-
-        if [ "$IMAGE_EXISTS" != "0" ]; then
-          echo "Image version 2025.05.22 already exists. Skipping build."
-          echo "##vso[task.setvariable variable=skip_build]true"
-          exit 0
-        else
-          echo "##vso[task.setvariable variable=skip_build]false"
-        fi
-      displayName: 'Check if image version already exists'
+        echo "Authenticating with Azure..."
+        az login --service-principal \
+          -u "$(client-id)" \
+          -p "$(client-secret)" \
+          --tenant "$(tenant-id)" > /dev/null
+        az account show
+      displayName: 'Azure CLI Login'
 
     - task: PowerShell@2
       displayName: 'Generate secure packer.auto.pkrvars.json (pwsh)'
@@ -86,9 +77,14 @@ stages:
         az account show
         echo "Content of generated packer.auto.pkrvars.json:"
         cat 01-base-packer/packer.auto.pkrvars.json
+        echo "Image versions available in SIG:"
+        az sig image-version list \
+          --gallery-name avd_sig \
+          --gallery-image-definition avd-goldenimage \
+          --resource-group ramboeck-test-westeurope-rg \
+          --query "[].name" -o table
         echo "##[endgroup]"
-      condition: ne(variables['skip_build'], 'true')
-      displayName: 'System & File Diagnostics'
+            displayName: 'System & File Diagnostics'
 
     - task: PowerShell@2
       condition: ne(variables['skip_build'], 'true')
@@ -122,6 +118,11 @@ stages:
         cd 01-base-packer
         rm -f packer.auto.pkrvars.json
       displayName: 'Cleanup packer.auto.pkrvars.json'
+
+    - script: |
+        echo "Logging out of Azure session"
+        az logout || true
+      displayName: 'Azure Logout (post-build)'
 
     - task: PublishBuildArtifacts@1
       condition: ne(variables['skip_build'], 'true')
