@@ -73,20 +73,20 @@ stages:
           Set-Location "$(Build.SourcesDirectory)/01-base-packer"
 
           Write-Host "##[group]Packer Validate"
-          packer validate \
-            -var "client_id=$(client-id)" \
-            -var "client_secret=$(client-secret)" \
-            -var "tenant_id=$(tenant-id)" \
-            -var "subscription_id=$(subscription-id)" \
-            -var "location=$(location)" \
-            -var "sig_rg_name=$(sig_rg_name)" \
-            -var "sig_name=$(sig_name)" \
-            -var "sig_image_name=$(sig_image_name)" \
-            -var "sig_image_version=$(date_tag)" \
-            -var "publisher=$(publisher)" \
-            -var "offer=$(offer)" \
-            -var "sku=$(sku)" \
-            -var "winrm_password=$(winrm_password)" \
+          packer validate `
+            -var "client_id=$(client-id)" `
+            -var "client_secret=$(client-secret)" `
+            -var "tenant_id=$(tenant-id)" `
+            -var "subscription_id=$(subscription-id)" `
+            -var "location=$(location)" `
+            -var "sig_rg_name=$(sig_rg_name)" `
+            -var "sig_name=$(sig_name)" `
+            -var "sig_image_name=$(sig_image_name)" `
+            -var "sig_image_version=$(date_tag)" `
+            -var "publisher=$(publisher)" `
+            -var "offer=$(offer)" `
+            -var "sku=$(sku)" `
+            -var "winrm_password=$(winrm_password)" `
             avd-base-image.pkr.hcl
           Write-Host "##[endgroup]"
 
@@ -103,20 +103,20 @@ stages:
           Write-Host "##[endgroup]"
 
           Write-Host "##[group]Packer Build with Logging"
-          packer build -color=true -on-error=abort \
-            -var "client_id=$(client-id)" \
-            -var "client_secret=$(client-secret)" \
-            -var "tenant_id=$(tenant-id)" \
-            -var "subscription_id=$(subscription-id)" \
-            -var "location=$(location)" \
-            -var "sig_rg_name=$(sig_rg_name)" \
-            -var "sig_name=$(sig_name)" \
-            -var "sig_image_name=$(sig_image_name)" \
-            -var "sig_image_version=$(date_tag)" \
-            -var "publisher=$(publisher)" \
-            -var "offer=$(offer)" \
-            -var "sku=$(sku)" \
-            -var "winrm_password=$(winrm_password)" \
+          packer build -color=true -on-error=abort `
+            -var "client_id=$(client-id)" `
+            -var "client_secret=$(client-secret)" `
+            -var "tenant_id=$(tenant-id)" `
+            -var "subscription_id=$(subscription-id)" `
+            -var "location=$(location)" `
+            -var "sig_rg_name=$(sig_rg_name)" `
+            -var "sig_name=$(sig_name)" `
+            -var "sig_image_name=$(sig_image_name)" `
+            -var "sig_image_version=$(date_tag)" `
+            -var "publisher=$(publisher)" `
+            -var "offer=$(offer)" `
+            -var "sku=$(sku)" `
+            -var "winrm_password=$(winrm_password)" `
             avd-base-image.pkr.hcl | Tee-Object -FilePath "packer.log"
           Write-Host "##[endgroup]"
 
