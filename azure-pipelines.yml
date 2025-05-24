@@ -24,7 +24,7 @@ stages:
   - job: BuildImage
     displayName: 'Execute Packer Build'
     pool:
-      name: 'Azure Pipelines'
+      name: 'AVD-packer'
     steps:
     - checkout: self
 
@@ -85,7 +85,7 @@ stages:
   - job: TerraformApply
     displayName: 'Terraform Apply'
     pool:
-      name: 'Azure Pipelines'
+      name: 'AVD-packer'
     steps:
     - checkout: self
 
