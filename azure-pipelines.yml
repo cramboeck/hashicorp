@@ -30,9 +30,9 @@ stages:
 
     - script: |
         echo "🔍 Prüfen, ob Key Vault Secrets in der Pipeline verfügbar sind:"
-        if [ -z "$client_id" ]; then echo "❌ client_id fehlt"; else echo "✅ client_id erkannt"; fi
-        if [ -z "$client_secret" ]; then echo "❌ client_secret fehlt"; else echo "✅ client_secret erkannt"; fi
-        if [ -z "$tenant_id" ]; then echo "❌ tenant_id fehlt"; else echo "✅ tenant_id erkannt"; fi
-        if [ -z "$subscription_id" ]; then echo "❌ subscription_id fehlt"; else echo "✅ subscription_id erkannt"; fi
-        if [ -z "$winrm_password" ]; then echo "❌ winrm_password fehlt"; else echo "✅ winrm_password erkannt"; fi
+        if [ -z "$clientid" ]; then echo "❌ client_id fehlt"; else echo "✅ client_id erkannt"; fi
+        if [ -z "$clientsecret" ]; then echo "❌ client_secret fehlt"; else echo "✅ client_secret erkannt"; fi
+        if [ -z "$tenantid" ]; then echo "❌ tenant_id fehlt"; else echo "✅ tenant_id erkannt"; fi
+        if [ -z "$subscriptionid" ]; then echo "❌ subscription_id fehlt"; else echo "✅ subscription_id erkannt"; fi
+        if [ -z "$winrmpassword" ]; then echo "❌ winrm_password fehlt"; else echo "✅ winrm_password erkannt"; fi
       displayName: '🔍 DEBUG: Key Vault Variablenprüfung'
