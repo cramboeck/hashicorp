@@ -48,10 +48,10 @@ stages:
           --gallery-name avd_sig \
           --gallery-image-definition avd-goldenimage \
           --resource-group ramboeck-test-westeurope-rg \
-          --query "[?name=='2025.05.24'] | length(@)" -o tsv)
+          --query "[?name=='2025.05.22'] | length(@)" -o tsv)
 
         if [ "$IMAGE_EXISTS" != "0" ]; then
-          echo "Image version 2025.05.24 already exists. Skipping build."
+          echo "Image version 2025.05.22 already exists. Skipping build."
           echo "##vso[task.setvariable variable=skip_build]true"
           exit 0
         else
