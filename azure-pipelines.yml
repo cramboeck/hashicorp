@@ -59,7 +59,7 @@ stages:
           -var "tenant_id=$(tenant-id)" \
           -var "subscription_id=$(subscription-id)" \
           -var "winrm_password=$(winrm_password)" \
-          -var-file=variables.pkrvars.hcl \
+          -var-file=variables.pkr.hcl \
           avd-base-image.pkr.hcl
         echo "##[endgroup]"
       workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
