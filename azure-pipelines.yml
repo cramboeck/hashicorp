@@ -29,11 +29,20 @@ stages:
     - checkout: self
 
     - script: |
+        echo "Mapping Key Vault secrets with dashes to environment-compatible variable names"
+        echo "##vso[task.setvariable variable=client_id]$(client-id)"
+        echo "##vso[task.setvariable variable=client_secret]$(client-secret)"
+        echo "##vso[task.setvariable variable=tenant_id]$(tenant-id)"
+        echo "##vso[task.setvariable variable=subscription_id]$(subscription-id)"
+        echo "##vso[task.setvariable variable=winrm_password]$(winrm-password)"
+      displayName: 'Normalize Secret Names from Key Vault'
+
+    - script: |
         echo "Authenticating with Azure..."
         az login --service-principal \
-          -u "$(client-id)" \
-          -p "$(client-secret)" \
-          --tenant "$(tenant-id)" > /dev/null
+          -u "$client_id" \
+          -p "$client_secret" \
+          --tenant "$tenant_id" > /dev/null
         az account show
       displayName: 'Azure CLI Login'
 
@@ -54,12 +63,12 @@ stages:
     - script: |
         echo "##[group]Packer Validate"
         packer validate \
-          -var "client_id=$(client-id)" \
-          -var "client_secret=$(client-secret)" \
-          -var "tenant_id=$(tenant-id)" \
-          -var "subscription_id=$(subscription-id)" \
-          -var "winrm_password=$(winrm_password)" \
-          -var-file=variables.pkr.hcl \
+          -var "client_id=$client_id" \
+          -var "client_secret=$client_secret" \
+          -var "tenant_id=$tenant_id" \
+          -var "subscription_id=$subscription_id" \
+          -var "winrm_password=$winrm_password" \
+          -var-file=variables.pkrvars.hcl \
           avd-base-image.pkr.hcl
         echo "##[endgroup]"
       workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
@@ -72,12 +81,12 @@ stages:
 
         echo "##[group]Packer Build with Logging"
         packer build -color=true -on-error=abort \
-          -var "client_id=$(client-id)" \
-          -var "client_secret=$(client-secret)" \
-          -var "tenant_id=$(tenant-id)" \
-          -var "subscription_id=$(subscription-id)" \
-          -var "winrm_password=$(winrm_password)" \
-          -var-file=variables.pkr.hcl \
+          -var "client_id=$client_id" \
+          -var "client_secret=$client_secret" \
+          -var "tenant_id=$tenant_id" \
+          -var "subscription_id=$subscription_id" \
+          -var "winrm_password=$winrm_password" \
+          -var-file=variables.pkrvars.hcl \
           avd-base-image.pkr.hcl | tee packer.log
         echo "##[endgroup]"
       workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
