@@ -70,6 +70,8 @@ stages:
         targetType: 'inline'
         pwsh: true
         script: |
+          Set-Location "$(Build.SourcesDirectory)/01-base-packer"
+
           Write-Host "##[group]Packer Validate"
           packer validate \
             -var "client_id=$(client-id)" \
@@ -85,7 +87,7 @@ stages:
             -var "offer=$(offer)" \
             -var "sku=$(sku)" \
             -var "winrm_password=$(winrm_password)" \
-            .
+            avd-base-image.pkr.hcl
           Write-Host "##[endgroup]"
 
     - task: PowerShell@2
@@ -94,8 +96,10 @@ stages:
         targetType: 'inline'
         pwsh: true
         script: |
+          Set-Location "$(Build.SourcesDirectory)/01-base-packer"
+
           Write-Host "##[group]Packer Init"
-          packer init .
+          packer init avd-base-image.pkr.hcl
           Write-Host "##[endgroup]"
 
           Write-Host "##[group]Packer Build with Logging"
@@ -113,7 +117,7 @@ stages:
             -var "offer=$(offer)" \
             -var "sku=$(sku)" \
             -var "winrm_password=$(winrm_password)" \
-            . | Tee-Object -FilePath "01-base-packer/packer.log"
+            avd-base-image.pkr.hcl | Tee-Object -FilePath "packer.log"
           Write-Host "##[endgroup]"
 
     - script: |
@@ -125,6 +129,6 @@ stages:
       condition: ne(variables['skip_build'], 'true')
       displayName: 'Publish Packer Log Output'
       inputs:
-        PathtoPublish: '01-base-packer/packer.log'
+        PathtoPublish: '$(Build.SourcesDirectory)/01-base-packer/packer.log'
         ArtifactName: 'packer-logs'
         publishLocation: 'Container'
