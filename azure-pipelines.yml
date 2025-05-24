@@ -53,20 +53,7 @@ stages:
 
     - script: |
         echo "##[group]Packer Validate"
-        packer validate \
-          -var "client_id=$(client-id)" \
-          -var "client_secret=$(client-secret)" \
-          -var "tenant_id=$(tenant-id)" \
-          -var "subscription_id=$(subscription-id)" \
-          -var "location=$(location)" \
-          -var "sig_rg_name=$(sig_rg_name)" \
-          -var "sig_name=$(sig_name)" \
-          -var "sig_image_name=$(sig_image_name)" \
-          -var "sig_image_version=2025.05.24" \
-          -var "publisher=$(publisher)" \
-          -var "offer=$(offer)" \
-          -var "winrm_password=$(winrm_password)" \
-          avd-base-image.pkr.hcl
+        packer validate -var-file=variables.pkr.hcl avd-base-image.pkr.hcl
         echo "##[endgroup]"
       workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
       displayName: 'Validate Packer Template'
@@ -77,20 +64,7 @@ stages:
         echo "##[endgroup]"
 
         echo "##[group]Packer Build with Logging"
-        packer build -color=true -on-error=abort \
-          -var "client_id=$(client-id)" \
-          -var "client_secret=$(client-secret)" \
-          -var "tenant_id=$(tenant-id)" \
-          -var "subscription_id=$(subscription-id)" \
-          -var "location=$(location)" \
-          -var "sig_rg_name=$(sig_rg_name)" \
-          -var "sig_name=$(sig_name)" \
-          -var "sig_image_name=$(sig_image_name)" \
-          -var "sig_image_version=2025.05.24" \
-          -var "publisher=$(publisher)" \
-          -var "offer=$(offer)" \
-          -var "winrm_password=$(winrm_password)" \
-          avd-base-image.pkr.hcl | tee packer.log
+        packer build -color=true -on-error=abort -var-file=variables.pkr.hcl avd-base-image.pkr.hcl | tee packer.log
         echo "##[endgroup]"
       workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
       displayName: 'Run Packer Build'
