@@ -52,6 +52,25 @@ stages:
 
     - task: PowerShell@2
       displayName: 'Generate secure packer.auto.pkrvars.json (pwsh)'
+      inputs:
+        targetType: 'inline'
+        pwsh: true
+        script: |
+          $json = @{
+            client_id       = '$(client-id)'
+            client_secret   = '$(client-secret)'
+            tenant_id       = '$(tenant-id)'
+            subscription_id = '$(subscription-id)'
+            winrm_password  = '$(winrm-password)'
+            sig_rg_name     = 'ramboeck-test-westeurope-rg'
+            sig_image_name  = 'avd-goldenimage'
+            sig_name        = 'avd_sig'
+            sig_image_version = '2025.05.24'
+          } | ConvertTo-Json -Depth 2
+
+          Set-Content -Path "01-base-packer/packer.auto.pkrvars.json" -Value $json
+
+    
 
     - script: |
         echo "##[group]System Diagnostics"
