@@ -1,7 +1,18 @@
+# Azure DevOps Pipeline for AVD Image Build and Infrastructure Deployment
+# Securely uses Azure Key Vault for secrets
+
 trigger:
   branches:
     include:
       - main
+
+schedules:
+- cron: "0 3 1 * *"  # jeden 1. Tag im Monat um 03:00 Uhr UTC
+  displayName: 'Monthly AVD Image Build'
+  branches:
+    include:
+      - main
+  always: true
 
 variables:
 - group: packer-secrets  # Variablen aus Key Vault verknüpfter Variable Group
@@ -78,19 +89,19 @@ stages:
     steps:
     - checkout: self
 
-    - task: TerraformInstaller@1
-      inputs:
-        terraformVersion: 'latest'
+    - script: |
+        curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip
+        unzip terraform.zip
+        sudo mv terraform /usr/local/bin/
+      displayName: 'Install Terraform CLI'
 
-    - task: TerraformTaskV4@4
-      inputs:
-        provider: 'azurerm'
-        command: 'apply'
-        workingDirectory: '00-avd-terraform'
-        environmentServiceNameAzureRM: '$(azureSubscription)'
-        backendServiceArm: '$(azureSubscription)'
-        backendAzureRmResourceGroupName: 'shared-image-gallery-rg'
-        backendAzureRmStorageAccountName: 'tfstatestorage'
-        backendAzureRmContainerName: 'tfstate'
-        backendAzureRmKey: 'avd.terraform.tfstate'
-        allowTelemetryCollection: false
+    - script: |
+        cd 00-avd-terraform
+        terraform init
+        terraform apply -auto-approve
+      env:
+        ARM_CLIENT_ID: $(client-id)
+        ARM_CLIENT_SECRET: $(client-secret)
+        ARM_SUBSCRIPTION_ID: $(subscription-id)
+        ARM_TENANT_ID: $(tenant-id)
+      displayName: 'Run Terraform Apply'
