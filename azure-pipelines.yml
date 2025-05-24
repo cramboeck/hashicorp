@@ -1,0 +1,96 @@
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+- group: packer-secrets  # Variablen aus Key Vault verknüpfter Variable Group
+
+stages:
+- stage: BuildAVDImage
+  displayName: 'Build AVD Base Image with Packer'
+  jobs:
+  - job: BuildImage
+    displayName: 'Execute Packer Build'
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - checkout: self
+
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.x'
+
+    - task: PowerShell@2
+      displayName: 'Install Packer via Chocolatey'
+      inputs:
+        targetType: 'inline'
+        script: |
+          choco install packer -y
+
+    - task: PowerShell@2
+      displayName: 'Validate Packer Template'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "##[group]Packer Validate"
+          packer validate -var-file="packer.auto.pkrvars.json" .
+          echo "##[endgroup]"
+
+    - task: PowerShell@2
+      displayName: 'Run Packer Build'
+      env:
+        PKR_VAR_client_id: $(client-id)
+        PKR_VAR_client_secret: $(client-secret)
+        PKR_VAR_tenant_id: $(tenant-id)
+        PKR_VAR_subscription_id: $(subscription-id)
+        PKR_VAR_winrm_password: $(winrm-password)
+        PKR_VAR_sig_rg_name: 'shared-image-gallery-rg'
+        PKR_VAR_sig_image_name: 'avd-golden'
+        PKR_VAR_sig_image_version: '2025.05.24'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "##[group]Packer Init"
+          packer init .
+          echo "##[endgroup]"
+
+          echo "##[group]Packer Build with Logging"
+          packer build -color=true -on-error=abort -var-file="packer.auto.pkrvars.json" . | Tee-Object -FilePath "packer.log"
+          echo "##[endgroup]"
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Packer Log Output'
+      inputs:
+        PathtoPublish: 'packer.log'
+        ArtifactName: 'packer-logs'
+        publishLocation: 'Container'
+
+- stage: DeployInfrastructure
+  displayName: 'Deploy AVD Infrastructure with Terraform'
+  dependsOn: BuildAVDImage
+  condition: succeeded()
+  jobs:
+  - job: TerraformApply
+    displayName: 'Terraform Apply'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformTaskV4@4
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '00-avd-terraform'
+        environmentServiceNameAzureRM: '$(azureSubscription)'
+        backendServiceArm: '$(azureSubscription)'
+        backendAzureRmResourceGroupName: 'shared-image-gallery-rg'
+        backendAzureRmStorageAccountName: 'tfstatestorage'
+        backendAzureRmContainerName: 'tfstate'
+        backendAzureRmKey: 'avd.terraform.tfstate'
+        allowTelemetryCollection: false
