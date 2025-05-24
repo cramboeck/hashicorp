@@ -63,12 +63,8 @@ stages:
                     tenant_id       = "$(tenant-id)"
                     subscription_id = "$(subscription-id)"
                     location        = "$(location)"
-                    resource_group  = "$(resource_group)"
+                    sig_rg_name     = "$(sig_rg_name)"
                     sig_name        = "$(sig_name)"
-                    image_name      = "$(image_name)"
-                    publisher       = "$(publisher)"
-                    offer           = "$(offer)"
-                    sku             = "$(sku)"
                   }
 
                   # Konvertiere HashTable zu JSON
