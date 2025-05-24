@@ -30,14 +30,13 @@ stages:
     steps:
     - checkout: self
 
-    # PowerShell ist jetzt dauerhaft installiert → dieser Schritt wird entfernt
-
     - task: PowerShell@2
       displayName: 'Validate Packer Template'
       inputs:
         targetType: 'inline'
         pwsh: true
         script: |
+          cd 01-avd-image
           echo "##[group]Packer Validate"
           packer validate -var-file="packer.auto.pkrvars.json" .
           echo "##[endgroup]"
@@ -48,6 +47,7 @@ stages:
         targetType: 'inline'
         pwsh: true
         script: |
+          cd 01-avd-image
           echo "##[group]Packer Init"
           packer init .
           echo "##[endgroup]"
@@ -68,7 +68,7 @@ stages:
     - task: PublishBuildArtifacts@1
       displayName: 'Publish Packer Log Output'
       inputs:
-        PathtoPublish: 'packer.log'
+        PathtoPublish: '01-avd-image/packer.log'
         ArtifactName: 'packer-logs'
         publishLocation: 'Container'
 
