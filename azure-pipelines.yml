@@ -1,5 +1,5 @@
 # Azure DevOps Pipeline for AVD Image Build and Infrastructure Deployment
-# Securely uses Azure Key Vault for secrets
+# Securely uses Azure Key Vault for secrets, no pkrvars.json file needed
 
 trigger:
   branches:
@@ -50,41 +50,11 @@ stages:
         az account show
       displayName: 'Azure CLI Login'
 
-    - task: PowerShell@2
-      displayName: 'Generate secure packer.auto.pkrvars.json (pwsh)'
-      inputs:
-          targetType: 'inline'
-          pwsh: true
-          script: |
-                # Hash table für Variablen aus dem Azure Key Vault
-                $packerVars = @{
-                    client_id       = "$(client-id)"
-                    client_secret   = "$(client-secret)"
-                    tenant_id       = "$(tenant-id)"
-                    subscription_id = "$(subscription-id)"
-                    location        = "$(location)"
-                    sig_rg_name     = "$(sig_rg_name)"
-                    sig_name        = "$(sig_name)"
-                  }
-
-                  # Konvertiere HashTable zu JSON
-                  $json = $packerVars | ConvertTo-Json -Depth 3
-
-                  # Zielpfad für die Datei
-                  $jsonPath = "$(Build.SourcesDirectory)/packer.auto.pkrvars.json"
-
-                  # Ausgabe
-                  Write-Host "Writing packer.auto.pkrvars.json to $jsonPath"
-                  $json | Out-File -FilePath $jsonPath -Encoding UTF8
-
-
     - script: |
         echo "##[group]System Diagnostics"
         df -h
         free -m
         az account show
-        echo "Content of generated packer.auto.pkrvars.json:"
-        cat 01-base-packer/packer.auto.pkrvars.json
         echo "Image versions available in SIG:"
         az sig image-version list \
           --gallery-name avd_sig \
@@ -92,7 +62,7 @@ stages:
           --resource-group ramboeck-test-westeurope-rg \
           --query "[].name" -o table
         echo "##[endgroup]"
-      displayName: 'System & File Diagnostics'
+      displayName: 'System Diagnostics'
 
     - task: PowerShell@2
       displayName: 'Validate Packer Template'
@@ -100,28 +70,51 @@ stages:
         targetType: 'inline'
         pwsh: true
         script: |
-                    echo "##[group]Packer Validate"
-                    packer validate -var-file="packer.auto.pkrvars.json" .
-                    echo "##[endgroup]"
+          Write-Host "##[group]Packer Validate"
+          packer validate \
+            -var "client_id=$(client-id)" \
+            -var "client_secret=$(client-secret)" \
+            -var "tenant_id=$(tenant-id)" \
+            -var "subscription_id=$(subscription-id)" \
+            -var "location=$(location)" \
+            -var "sig_rg_name=$(sig_rg_name)" \
+            -var "sig_name=$(sig_name)" \
+            -var "sig_image_name=$(sig_image_name)" \
+            -var "sig_image_version=$(date_tag)" \
+            -var "publisher=$(publisher)" \
+            -var "offer=$(offer)" \
+            -var "sku=$(sku)" \
+            -var "winrm_password=$(winrm_password)" \
+            .
+          Write-Host "##[endgroup]"
 
     - task: PowerShell@2
       displayName: 'Run Packer Build'
       inputs:
-          targetType: 'inline'
-          pwsh: true
-          script: |
-                  echo "##[group]Packer Init"
-                  packer init .
-                  echo "##[endgroup]"
+        targetType: 'inline'
+        pwsh: true
+        script: |
+          Write-Host "##[group]Packer Init"
+          packer init .
+          Write-Host "##[endgroup]"
 
-                  echo "##[group]Packer Build with Logging"
-                  packer build -color=true -on-error=abort -var-file="packer.auto.pkrvars.json" . | Tee-Object -FilePath "packer.log"
-                  echo "##[endgroup]"
-
-    - script: |
-        cd 01-base-packer
-        Remove-Item -Path "01-base-packer/packer.auto.pkrvars.json" -Force -ErrorAction SilentlyContinue
-        displayName: 'Cleanup packer.auto.pkrvars.json'
+          Write-Host "##[group]Packer Build with Logging"
+          packer build -color=true -on-error=abort \
+            -var "client_id=$(client-id)" \
+            -var "client_secret=$(client-secret)" \
+            -var "tenant_id=$(tenant-id)" \
+            -var "subscription_id=$(subscription-id)" \
+            -var "location=$(location)" \
+            -var "sig_rg_name=$(sig_rg_name)" \
+            -var "sig_name=$(sig_name)" \
+            -var "sig_image_name=$(sig_image_name)" \
+            -var "sig_image_version=$(date_tag)" \
+            -var "publisher=$(publisher)" \
+            -var "offer=$(offer)" \
+            -var "sku=$(sku)" \
+            -var "winrm_password=$(winrm_password)" \
+            . | Tee-Object -FilePath "01-base-packer/packer.log"
+          Write-Host "##[endgroup]"
 
     - script: |
         echo "Logging out of Azure session"
