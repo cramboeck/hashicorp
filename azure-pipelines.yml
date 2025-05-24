@@ -24,7 +24,7 @@ stages:
   - job: BuildImage
     displayName: 'Execute Packer Build'
     pool:
-      vmImage: 'windows-latest'
+      name: 'Azure Pipelines'
     steps:
     - checkout: self
 
