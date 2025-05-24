@@ -52,23 +52,6 @@ stages:
 
     - task: PowerShell@2
       displayName: 'Generate secure packer.auto.pkrvars.json (pwsh)'
-      inputs:
-        targetType: 'inline'
-        pwsh: true
-        script: |
-          $json = @{
-            client_id       = '$(client-id)'
-            client_secret   = '$(client-secret)'
-            tenant_id       = '$(tenant-id)'
-            subscription_id = '$(subscription-id)'
-            winrm_password  = '$(winrm-password)'
-            sig_rg_name     = 'ramboeck-test-westeurope-rg'
-            sig_image_name  = 'avd-goldenimage'
-            sig_name        = 'avd_sig'
-            sig_image_version = '2025.05.24'
-          } | ConvertTo-Json -Depth 2
-
-          Set-Content -Path "01-base-packer/packer.auto.pkrvars.json" -Value $json
 
     - script: |
         echo "##[group]System Diagnostics"
@@ -84,39 +67,35 @@ stages:
           --resource-group ramboeck-test-westeurope-rg \
           --query "[].name" -o table
         echo "##[endgroup]"
-            displayName: 'System & File Diagnostics'
+      displayName: 'System & File Diagnostics'
 
     - task: PowerShell@2
-      condition: ne(variables['skip_build'], 'true')
       displayName: 'Validate Packer Template'
       inputs:
         targetType: 'inline'
         pwsh: true
         script: |
-          cd 01-base-packer
           echo "##[group]Packer Validate"
           packer validate -var-file="packer.auto.pkrvars.json" .
           echo "##[endgroup]"
 
     - task: PowerShell@2
-      condition: ne(variables['skip_build'], 'true')
       displayName: 'Run Packer Build'
       inputs:
         targetType: 'inline'
         pwsh: true
         script: |
-          cd 01-base-packer
-          echo "##[group]Packer Init"
-          packer init .
-          echo "##[endgroup]"
+                    echo "##[group]Packer Init"
+                    packer init .
+                    echo "##[endgroup]"
 
-          echo "##[group]Packer Build with Logging"
-          packer build -color=true -on-error=abort -var-file="packer.auto.pkrvars.json" . | Tee-Object -FilePath "packer.log"
-          echo "##[endgroup]"
+                    echo "##[group]Packer Build with Logging"
+                    packer build -color=true -on-error=abort -var-file="packer.auto.pkrvars.json" . | Tee-Object -FilePath "packer.log"
+                    echo "##[endgroup]"
 
     - script: |
         cd 01-base-packer
-        rm -f packer.auto.pkrvars.json
+        Remove-Item -Path "01-base-packer/packer.auto.pkrvars.json" -Force -ErrorAction SilentlyContinue
       displayName: 'Cleanup packer.auto.pkrvars.json'
 
     - script: |
