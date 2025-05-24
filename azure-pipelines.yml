@@ -22,85 +22,17 @@ stages:
   displayName: 'Build AVD Base Image with Packer'
   jobs:
   - job: BuildImage
-    displayName: 'Execute Packer Build'
+    displayName: 'DEBUG Key Vault Integration'
     pool:
       name: 'AVD-packer'
     steps:
     - checkout: self
 
     - script: |
-        echo "Mapping Key Vault secrets with dashes to environment-compatible variable names"
-        echo "##vso[task.setvariable variable=client_id]$(client-id)"
-        echo "##vso[task.setvariable variable=client_secret]$(client-secret)"
-        echo "##vso[task.setvariable variable=tenant_id]$(tenant-id)"
-        echo "##vso[task.setvariable variable=subscription_id]$(subscription-id)"
-        echo "##vso[task.setvariable variable=winrm_password]$(winrm-password)"
-      displayName: 'Normalize Secret Names from Key Vault'
-
-    - script: |
-        echo "Authenticating with Azure..."
-        az login --service-principal \
-          -u "$client_id" \
-          -p "$client_secret" \
-          --tenant "$tenant_id" > /dev/null
-        az account show
-      displayName: 'Azure CLI Login'
-
-    - script: |
-        echo "##[group]System Diagnostics"
-        df -h
-        free -m
-        az account show
-        echo "Image versions available in SIG:"
-        az sig image-version list \
-          --gallery-name avd_sig \
-          --gallery-image-definition avd-goldenimage \
-          --resource-group ramboeck-test-westeurope-rg \
-          --query "[].name" -o table
-        echo "##[endgroup]"
-      displayName: 'System Diagnostics'
-
-    - script: |
-        echo "##[group]Packer Validate"
-        packer validate \
-          -var "client_id=$client_id" \
-          -var "client_secret=$client_secret" \
-          -var "tenant_id=$tenant_id" \
-          -var "subscription_id=$subscription_id" \
-          -var "winrm_password=$winrm_password" \
-          -var-file=variables.pkrvars.hcl \
-          avd-base-image.pkr.hcl
-        echo "##[endgroup]"
-      workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
-      displayName: 'Validate Packer Template'
-
-    - script: |
-        echo "##[group]Packer Init"
-        packer init avd-base-image.pkr.hcl
-        echo "##[endgroup]"
-
-        echo "##[group]Packer Build with Logging"
-        packer build -color=true -on-error=abort \
-          -var "client_id=$client_id" \
-          -var "client_secret=$client_secret" \
-          -var "tenant_id=$tenant_id" \
-          -var "subscription_id=$subscription_id" \
-          -var "winrm_password=$winrm_password" \
-          -var-file=variables.pkrvars.hcl \
-          avd-base-image.pkr.hcl | tee packer.log
-        echo "##[endgroup]"
-      workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
-      displayName: 'Run Packer Build'
-
-    - script: |
-        echo "Logging out of Azure session"
-        az logout || true
-      displayName: 'Azure Logout (post-build)'
-
-    - task: PublishBuildArtifacts@1
-      condition: ne(variables['skip_build'], 'true')
-      displayName: 'Publish Packer Log Output'
-      inputs:
-        PathtoPublish: '$(Build.SourcesDirectory)/01-base-packer/packer.log'
-        ArtifactName: 'packer-logs'
-        publishLocation: 'Container'
+        echo "🔍 Prüfen, ob Key Vault Secrets in der Pipeline verfügbar sind:"
+        if [ -z "$client_id" ]; then echo "❌ client_id fehlt"; else echo "✅ client_id erkannt"; fi
+        if [ -z "$client_secret" ]; then echo "❌ client_secret fehlt"; else echo "✅ client_secret erkannt"; fi
+        if [ -z "$tenant_id" ]; then echo "❌ tenant_id fehlt"; else echo "✅ tenant_id erkannt"; fi
+        if [ -z "$subscription_id" ]; then echo "❌ subscription_id fehlt"; else echo "✅ subscription_id erkannt"; fi
+        if [ -z "$winrm_password" ]; then echo "❌ winrm_password fehlt"; else echo "✅ winrm_password erkannt"; fi
+      displayName: '🔍 DEBUG: Key Vault Variablenprüfung'
