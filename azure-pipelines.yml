@@ -1,5 +1,5 @@
 # Azure DevOps Pipeline for AVD Image Build and Infrastructure Deployment
-# Securely uses Azure Key Vault for secrets, no pkrvars.json file needed
+# Securely uses Azure Key Vault for secrets, streamlined using native script tasks
 
 trigger:
   branches:
@@ -18,21 +18,8 @@ variables:
 - group: packer-secrets  # Variablen aus Key Vault verknüpfter Variable Group
 
 stages:
-- stage: Init
-  displayName: 'Set fixed variables'
-  jobs:
-  - job: InitVars
-    displayName: 'Set static image version'
-    pool:
-      name: 'AVD-packer'
-    steps:
-    - script: |
-        echo "##vso[task.setvariable variable=date_tag]2025.05.24"
-      displayName: 'Set fixed date_tag variable'
-
 - stage: BuildAVDImage
   displayName: 'Build AVD Base Image with Packer'
-  dependsOn: Init
   jobs:
   - job: BuildImage
     displayName: 'Execute Packer Build'
@@ -64,61 +51,49 @@ stages:
         echo "##[endgroup]"
       displayName: 'System Diagnostics'
 
-    - task: PowerShell@2
+    - script: |
+        echo "##[group]Packer Validate"
+        packer validate \
+          -var "client_id=$(client-id)" \
+          -var "client_secret=$(client-secret)" \
+          -var "tenant_id=$(tenant-id)" \
+          -var "subscription_id=$(subscription-id)" \
+          -var "location=$(location)" \
+          -var "sig_rg_name=$(sig_rg_name)" \
+          -var "sig_name=$(sig_name)" \
+          -var "sig_image_name=$(sig_image_name)" \
+          -var "sig_image_version=2025.05.24" \
+          -var "publisher=$(publisher)" \
+          -var "offer=$(offer)" \
+          -var "winrm_password=$(winrm_password)" \
+          avd-base-image.pkr.hcl
+        echo "##[endgroup]"
+      workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
       displayName: 'Validate Packer Template'
-      inputs:
-        targetType: 'inline'
-        pwsh: true
-        script: |
-          Set-Location "$(Build.SourcesDirectory)/01-base-packer"
 
-          Write-Host "##[group]Packer Validate"
-          packer validate `
-            -var "client_id=$(client-id)" `
-            -var "client_secret=$(client-secret)" `
-            -var "tenant_id=$(tenant-id)" `
-            -var "subscription_id=$(subscription-id)" `
-            -var "location=$(location)" `
-            -var "sig_rg_name=$(sig_rg_name)" `
-            -var "sig_name=$(sig_name)" `
-            -var "sig_image_name=$(sig_image_name)" `
-            -var "sig_image_version=$(date_tag)" `
-            -var "publisher=$(publisher)" `
-            -var "offer=$(offer)" `
-            -var "sku=$(sku)" `
-            -var "winrm_password=$(winrm_password)" `
-            avd-base-image.pkr.hcl
-          Write-Host "##[endgroup]"
+    - script: |
+        echo "##[group]Packer Init"
+        packer init avd-base-image.pkr.hcl
+        echo "##[endgroup]"
 
-    - task: PowerShell@2
+        echo "##[group]Packer Build with Logging"
+        packer build -color=true -on-error=abort \
+          -var "client_id=$(client-id)" \
+          -var "client_secret=$(client-secret)" \
+          -var "tenant_id=$(tenant-id)" \
+          -var "subscription_id=$(subscription-id)" \
+          -var "location=$(location)" \
+          -var "sig_rg_name=$(sig_rg_name)" \
+          -var "sig_name=$(sig_name)" \
+          -var "sig_image_name=$(sig_image_name)" \
+          -var "sig_image_version=2025.05.24" \
+          -var "publisher=$(publisher)" \
+          -var "offer=$(offer)" \
+          -var "winrm_password=$(winrm_password)" \
+          avd-base-image.pkr.hcl | tee packer.log
+        echo "##[endgroup]"
+      workingDirectory: '$(Build.SourcesDirectory)/01-base-packer'
       displayName: 'Run Packer Build'
-      inputs:
-        targetType: 'inline'
-        pwsh: true
-        script: |
-          Set-Location "$(Build.SourcesDirectory)/01-base-packer"
-
-          Write-Host "##[group]Packer Init"
-          packer init avd-base-image.pkr.hcl
-          Write-Host "##[endgroup]"
-
-          Write-Host "##[group]Packer Build with Logging"
-          packer build -color=true -on-error=abort `
-            -var "client_id=$(client-id)" `
-            -var "client_secret=$(client-secret)" `
-            -var "tenant_id=$(tenant-id)" `
-            -var "subscription_id=$(subscription-id)" `
-            -var "location=$(location)" `
-            -var "sig_rg_name=$(sig_rg_name)" `
-            -var "sig_name=$(sig_name)" `
-            -var "sig_image_name=$(sig_image_name)" `
-            -var "sig_image_version=$(date_tag)" `
-            -var "publisher=$(publisher)" `
-            -var "offer=$(offer)" `
-            -var "sku=$(sku)" `
-            -var "winrm_password=$(winrm_password)" `
-            avd-base-image.pkr.hcl | Tee-Object -FilePath "packer.log"
-          Write-Host "##[endgroup]"
 
     - script: |
         echo "Logging out of Azure session"
