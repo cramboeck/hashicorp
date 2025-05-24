@@ -85,7 +85,7 @@ stages:
   - job: TerraformApply
     displayName: 'Terraform Apply'
     pool:
-      vmImage: 'ubuntu-latest'
+      name: 'Azure Pipelines'
     steps:
     - checkout: self
 
