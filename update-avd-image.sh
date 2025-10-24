@@ -122,10 +122,42 @@ check_azure_login() {
     fi
 }
 
+# Funktion: Prüfe ob Packer-Variablen existieren
+check_packer_variables() {
+    local packer_dir=$1
+
+    if [ -f "$packer_dir/terraform.auto.pkrvars.json" ] || [ -f "$packer_dir/packer.auto.pkrvars.hcl" ]; then
+        print_success "Variablen-Datei gefunden"
+        return 0
+    else
+        print_error "Keine Packer-Variablen-Datei gefunden!"
+        echo ""
+        print_warning "Packer benötigt eine Variablen-Datei mit Azure-Credentials."
+        echo ""
+        print_info "Lösung 1 (EMPFOHLEN): Terraform ausführen"
+        echo "  1. cd 00-avd-terraform"
+        echo "  2. terraform init"
+        echo "  3. terraform apply"
+        echo "  → Terraform erstellt automatisch alle benötigten Variablen-Dateien"
+        echo ""
+        print_info "Lösung 2: Manuelle Konfiguration"
+        echo "  1. cd $packer_dir"
+        echo "  2. cp packer.auto.pkrvars.hcl.example packer.auto.pkrvars.hcl"
+        echo "  3. Passen Sie die Werte in packer.auto.pkrvars.hcl an"
+        echo ""
+        return 1
+    fi
+}
+
 # Funktion: Monatliches Update
 run_monthly_update() {
     print_info "Starte monatliches Image-Update..."
     echo ""
+
+    # Prüfe ob Packer-Variablen existieren
+    if ! check_packer_variables "03-monthly-packer"; then
+        return 1
+    fi
 
     cd 03-monthly-packer
 
@@ -143,7 +175,8 @@ run_monthly_update() {
         print_info "Neue Image-Version wurde in Shared Image Gallery gespeichert"
     else
         print_error "Build fehlgeschlagen! Prüfen Sie die Logs oben."
-        exit 1
+        cd ..
+        return 1
     fi
 
     cd ..
@@ -153,6 +186,11 @@ run_monthly_update() {
 run_app_layer_build() {
     print_info "Starte App-Layer Image-Build..."
     echo ""
+
+    # Prüfe ob Packer-Variablen existieren
+    if ! check_packer_variables "02-appscustom-packer"; then
+        return 1
+    fi
 
     cd 02-appscustom-packer
 
@@ -170,7 +208,8 @@ run_app_layer_build() {
         print_info "Neue Image-Version wurde in Shared Image Gallery gespeichert"
     else
         print_error "Build fehlgeschlagen! Prüfen Sie die Logs oben."
-        exit 1
+        cd ..
+        return 1
     fi
 
     cd ..
@@ -180,6 +219,11 @@ run_app_layer_build() {
 run_base_build() {
     print_info "Starte Base Image-Build..."
     echo ""
+
+    # Prüfe ob Packer-Variablen existieren
+    if ! check_packer_variables "01-base-packer"; then
+        return 1
+    fi
 
     cd 01-base-packer
 
@@ -196,7 +240,8 @@ run_base_build() {
         print_success "Base Image Build erfolgreich abgeschlossen!"
     else
         print_error "Build fehlgeschlagen! Prüfen Sie die Logs oben."
-        exit 1
+        cd ..
+        return 1
     fi
 
     cd ..

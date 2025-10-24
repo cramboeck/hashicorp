@@ -1,0 +1,36 @@
+# ============================================================================
+# Packer Variables - Example Configuration
+# ============================================================================
+# Diese Datei wird AUTOMATISCH von Terraform generiert als:
+# terraform.auto.pkrvars.json
+#
+# Für manuelle Ausführung können Sie diese Datei kopieren:
+# cp packer.auto.pkrvars.hcl.example packer.auto.pkrvars.hcl
+# ============================================================================
+
+# Azure Authentication
+client_id       = "00000000-0000-0000-0000-000000000000"
+client_secret   = "your-client-secret-here"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# WinRM Password (temporär für Packer-Build)
+winrm_password = "P@ssw0rd123!"  # Wird automatisch von Terraform generiert
+
+# Shared Image Gallery Konfiguration
+sig_name         = "avd_sig"
+sig_image_name   = "avd-goldenimage"
+sig_image_version = "2025.01.25"  # Format: YYYY.MM.DD
+sig_rg_name      = "beispiel-kunde-dev-westeurope-rg"
+
+# Azure Region
+location = "westeurope"
+
+# ============================================================================
+# WICHTIG:
+# ============================================================================
+# 1. Diese Werte werden normalerweise AUTOMATISCH von Terraform generiert
+# 2. Führen Sie ZUERST "terraform apply" im 00-avd-terraform Verzeichnis aus
+# 3. Terraform erstellt automatisch: terraform.auto.pkrvars.json
+# 4. Nur für manuelle Tests sollten Sie diese Datei verwenden
+# ============================================================================

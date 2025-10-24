@@ -13,73 +13,86 @@ source "azure-arm" "avd" {
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
 
-  #location                           = var.location
-  build_resource_group_name          = "packer-temp-rg"
-  managed_image_resource_group_name = var.sig_rg_name
-  managed_image_name                = var.sig_image_name
+  build_resource_group_name = "packer-temp-rg"
+  temp_compute_name         = "pkr-monthly-vm"
+  temp_nic_name             = "pkr-monthly-vm-nic"
 
-  # Basisimage - existing Image from SIG for monthly update and versioning
+  # 🔄 Basisimage - Verwendet neueste Version aus SIG für monatliche Updates
   shared_image_gallery {
-    subscription = var.subscription_id
+    subscription   = var.subscription_id
     resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"  
-    image_name = var.sig_image_name
-    storage_account_type = "Standard_LRS" 
-    image_version = "1.0.1"
-        target_region {
-      name = "westeurope"
-    }
+    gallery_name   = var.sig_name
+    image_name     = var.sig_image_name
+    image_version  = "latest"  # Nutzt automatisch die neueste verfügbare Version
   }
 
+  # 🧱 Ziel: Neue Version in Shared Image Gallery
   shared_image_gallery_destination {
-    subscription = var.subscription_id
-    resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"  
-    image_name = var.sig_image_name
-    storage_account_type = "Standard_LRS" 
-    image_version = "2025-05-22"
-        target_region {
-      name = "westeurope"
+    subscription         = var.subscription_id
+    resource_group       = var.sig_rg_name
+    gallery_name         = var.sig_name
+    image_name           = var.sig_image_name
+    image_version        = var.sig_image_version
+    storage_account_type = "Standard_LRS"
+
+    target_region {
+      name                   = var.location
+      replicas               = 1
+      storage_account_type   = "Standard_LRS"
     }
   }
 
-  # Communicator
-  communicator      = "winrm"
-  winrm_username    = "packer"
-  winrm_password    = var.winrm_password
-  winrm_use_ssl     = false
-  winrm_insecure    = true
-  winrm_timeout     = "15m"
+  # 🔐 Sicherheitsoptionen: Trusted Launch
+  security_type       = "TrustedLaunch"
+  secure_boot_enabled = true
+  vtpm_enabled        = true
+
+  # 🔌 Kommunikation via WinRM
+  # HINWEIS: WinRM über HTTP ist für temporäre Packer-Build-VMs akzeptabel,
+  # da diese VMs nur während des Builds existieren und in einem isolierten Netzwerk laufen.
+  # In Produktionsumgebungen sollte WinRM über HTTPS mit Zertifikaten konfiguriert werden.
+  communicator    = "winrm"
+  winrm_username  = "packer"
+  winrm_password  = var.winrm_password
+  winrm_use_ssl   = false
+  winrm_insecure  = true
+  winrm_timeout   = "15m"
 
   azure_tags = {
     CreatedBy = "Packer"
     Project   = "AVD"
+    Stage     = "MonthlyUpdate"
   }
 }
 
 build {
   sources = ["source.azure-arm.avd"]
 
-  #### ////  Windows Updateinstallation
-
+  #### //// Windows Updates ####
   provisioner "powershell" {
-   script = "scripts/windows-updates.ps1"
+    script = "scripts/Install_WindowsUpdates.ps1"
   }
 
   provisioner "windows-restart" {}
 
-  #### //// Office 365 Updateinstallation
+  #### //// Microsoft Office 365 Updates ####
   provisioner "powershell" {
-   script = "scripts/update-microsoft365.ps1"
+    script = "scripts/Update-MSOffice365.ps1"
   }
 
-  #### //// Update Software using Chocolatey
+  #### //// Software Updates (Chocolatey) ####
   provisioner "powershell" {
-   script = "scripts/update-software.ps1"
+    script = "scripts/Update-Software.ps1"
+  }
+
+  #### //// VDOT Re-Optimization (Optional) ####
+  provisioner "powershell" {
+    script = "scripts/Install-VDOT.ps1"
   }
 
   provisioner "windows-restart" {}
 
+  #### //// Sysprep & Generalize ####
   provisioner "powershell" {
     inline = [
       "Write-Host '[FINISHING] Starte Sysprep...'",

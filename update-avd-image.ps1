@@ -87,6 +87,40 @@ function Test-Prerequisites {
     Write-Host ""
 }
 
+# Prüfe ob Packer-Variablen existieren
+function Test-PackerVariables {
+    param([string]$PackerDir)
+
+    $varFiles = @(
+        "$PackerDir\terraform.auto.pkrvars.json",
+        "$PackerDir\packer.auto.pkrvars.hcl"
+    )
+
+    foreach ($varFile in $varFiles) {
+        if (Test-Path $varFile) {
+            Write-Success "Variablen-Datei gefunden: $(Split-Path -Leaf $varFile)"
+            return $true
+        }
+    }
+
+    Write-ErrorMsg "Keine Packer-Variablen-Datei gefunden!"
+    Write-Host ""
+    Write-Warning "Packer benötigt eine Variablen-Datei mit Azure-Credentials."
+    Write-Host ""
+    Write-Info "Lösung 1 (EMPFOHLEN): Terraform ausführen"
+    Write-Host "  1. cd 00-avd-terraform"
+    Write-Host "  2. terraform init"
+    Write-Host "  3. terraform apply"
+    Write-Host "  → Terraform erstellt automatisch alle benötigten Variablen-Dateien"
+    Write-Host ""
+    Write-Info "Lösung 2: Manuelle Konfiguration"
+    Write-Host "  1. cd $PackerDir"
+    Write-Host "  2. cp packer.auto.pkrvars.hcl.example packer.auto.pkrvars.hcl"
+    Write-Host "  3. Passen Sie die Werte in packer.auto.pkrvars.hcl an"
+    Write-Host ""
+    return $false
+}
+
 # Zeige Menü
 function Show-Menu {
     Write-Host "╔═══════════════════════════════════════════════════════════════╗" -ForegroundColor Blue
@@ -144,6 +178,11 @@ function Start-MonthlyUpdate {
     Write-Info "Starte monatliches Image-Update..."
     Write-Host ""
 
+    # Prüfe ob Packer-Variablen existieren
+    if (-not (Test-PackerVariables "03-monthly-packer")) {
+        return
+    }
+
     Push-Location 03-monthly-packer
 
     try {
@@ -178,6 +217,11 @@ function Start-AppLayerBuild {
     Write-Info "Starte App-Layer Image-Build..."
     Write-Host ""
 
+    # Prüfe ob Packer-Variablen existieren
+    if (-not (Test-PackerVariables "02-appscustom-packer")) {
+        return
+    }
+
     Push-Location 02-appscustom-packer
 
     try {
@@ -211,6 +255,11 @@ function Start-AppLayerBuild {
 function Start-BaseBuild {
     Write-Info "Starte Base Image-Build..."
     Write-Host ""
+
+    # Prüfe ob Packer-Variablen existieren
+    if (-not (Test-PackerVariables "01-base-packer")) {
+        return
+    }
 
     Push-Location 01-base-packer
 
