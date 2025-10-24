@@ -1,6 +1,26 @@
 # 🛠️ Azure AVD Image Builder & Terraform Automation
 This repository provides a modular, production-grade automation framework for building and maintaining Azure Virtual Desktop (AVD) images using Packer and Terraform.
 
+## 🚀 Quick Start
+
+Verwenden Sie das **automatisierte Update-Script** für eine einfache Image-Verwaltung:
+
+**Linux/macOS:**
+```bash
+./update-avd-image.sh
+```
+
+**Windows (PowerShell):**
+```powershell
+.\update-avd-image.ps1
+```
+
+Das Script bietet ein interaktives Menü für:
+- ✅ Monatliche Updates (schnellste Option)
+- 🔧 App-Layer Rebuilds
+- 🔄 Vollständige Image-Rebuilds
+- ☁️ Terraform Infrastruktur-Updates
+
 ## It follows best practices such as:
 
 - ✨ Modular infrastructure-as-code via Terraform
@@ -132,10 +152,99 @@ packer build avd-monthly.pkr.hcl
  - CI/CD Integration via GitHub Actions or Azure DevOps
  - Dynamic app selection and language installation
  - Image lifecycle automation & SIG cleanup
- - Integration NeverRed 
+ - Integration NeverRed
  - Role-based modular expansion (e.g., Office, dev tools, call centers)
+
+---
+
+## 📝 Prerequisites
+
+Bevor Sie beginnen, stellen Sie sicher, dass folgende Tools installiert sind:
+
+- **Terraform** >= 1.9.0 ([Download](https://www.terraform.io/downloads))
+- **Packer** >= 2.3.3 ([Download](https://www.packer.io/downloads))
+- **Azure CLI** ([Download](https://docs.microsoft.com/cli/azure/install-azure-cli))
+- **Git** (für Version Control)
+
+### Azure Service Principal erstellen
+
+```bash
+az ad sp create-for-rbac --name "avd-terraform-sp" \
+  --role Contributor \
+  --scopes /subscriptions/{your-subscription-id}
+```
+
+Notieren Sie: `clientId`, `clientSecret`, `tenantId`
+
+---
+
+## ⚙️ Konfiguration
+
+1. Kopieren Sie die Beispiel-Konfiguration:
+   ```bash
+   cd 00-avd-terraform
+   cp terraform.tfvars.example terraform.tfvars
+   ```
+
+2. Bearbeiten Sie `terraform.tfvars` mit Ihren Azure-Credentials
+
+3. Für Produktivumgebungen: Verwenden Sie Azure Key Vault oder Azure DevOps Variable Groups
+
+---
+
+## 🔐 Sicherheitshinweise
+
+- ✅ WinRM über HTTP ist nur für temporäre Packer-Build-VMs akzeptabel
+- ✅ Secrets werden über Azure Key Vault oder terraform.tfvars verwaltet
+- ✅ terraform.tfvars wird von .gitignore ausgeschlossen
+- ✅ Trusted Launch mit Secure Boot und vTPM aktiviert
+- ✅ Debug-Mode ist standardmäßig deaktiviert
+
+---
+
+## 📦 Was ist neu?
+
+### Version 2.0 - Januar 2025
+
+- 🎯 **Automatisiertes Update-Script** (Bash & PowerShell) für einfache Image-Verwaltung
+- 🔧 **Terraform Version Management** (.terraform-version)
+- 📝 **terraform.tfvars.example** für einfachen Einstieg
+- 🛡️ **Verbesserte Sicherheits-Dokumentation** für WinRM
+- 🐛 **Bug-Fix**: Image-Version verwendet jetzt korrektes Datumsformat
+- 🔄 **Optimierte Provider Constraints** (ermöglicht Patch-Updates)
+- 🎨 **Erweiterte .gitignore** im Root-Verzeichnis
+- ⚙️ **Parametrisierter Debug-Mode** in PowerShell Scripts
+- 📜 **MIT License** hinzugefügt
+
+---
+
+## 📚 Dokumentation
+
+- **README.md** - Diese Datei
+- **terraform.tfvars.example** - Konfigurationsbeispiel
+- **LICENSE** - MIT Lizenz
+
+### Module-Dokumentation
+
+Alle Terraform-Module befinden sich in `00-avd-terraform/modules/`:
+- `resource_group` - Azure Resource Group Verwaltung
+- `hostpool` - AVD Host Pool mit Scheduled Agent Updates
+- `application_group` - Desktop Application Group
+- `workspace` - AVD Workspace
+- `shared_image_gallery` - Shared Image Gallery für Golden Images
+- `avd_workspace_binding` - Workspace <-> Application Group Binding
+- `storageaccount` - Storage Account für FSLogix Profile
+- `domain_join` - Domain Join Konfiguration
+
+---
 
 ### 👨‍💻 Maintained by
 Developed and maintained by Christoph Ramböck – [Website](https://www.ramboeck-it.com)
 
 Professional AVD infrastructure & automation consulting
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

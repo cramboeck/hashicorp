@@ -1,0 +1,49 @@
+# ============================================================================
+# Azure Virtual Desktop - Terraform Configuration Example
+# ============================================================================
+# Kopieren Sie diese Datei zu 'terraform.tfvars' und passen Sie die Werte an
+# WICHTIG: terraform.tfvars wird von .gitignore ignoriert (enthält sensible Daten)
+# ============================================================================
+
+# ============================================================================
+# Azure Authentication (Service Principal)
+# ============================================================================
+# Diese Werte erhalten Sie aus Ihrer Azure App Registration / Service Principal
+# Alternativ können Sie diese über Umgebungsvariablen oder Azure DevOps Key Vault bereitstellen
+
+client_id       = "00000000-0000-0000-0000-000000000000"  # Azure AD App Registration Client ID
+client_secret   = "your-secret-here"                       # Service Principal Secret
+subscription_id = "00000000-0000-0000-0000-000000000000"  # Azure Subscription ID
+tenant_id       = "00000000-0000-0000-0000-000000000000"  # Azure AD Tenant ID
+
+# ============================================================================
+# Environment Configuration
+# ============================================================================
+
+customer    = "beispiel-kunde"  # Kundenname oder Kürzel (z.B. "acme", "contoso")
+environment = "dev"             # Umgebung: dev, test, prod
+location    = "West Europe"     # Azure Region (z.B. "West Europe", "North Europe")
+
+# ============================================================================
+# Hinweise zur Verwendung
+# ============================================================================
+#
+# 1. Secrets Management:
+#    - Für Produktivumgebungen: Verwenden Sie Azure Key Vault oder Azure DevOps Variable Groups
+#    - Für lokale Tests: terraform.tfvars mit sensiblen Daten (wird von Git ignoriert)
+#
+# 2. Service Principal erstellen:
+#    az ad sp create-for-rbac --name "avd-terraform-sp" \
+#      --role Contributor \
+#      --scopes /subscriptions/{subscription-id}
+#
+# 3. Benötigte Berechtigungen:
+#    - Contributor auf Subscription-Ebene
+#    - Zugriff auf Azure Key Vault (falls verwendet)
+#
+# 4. Initialisierung:
+#    cd 00-avd-terraform
+#    terraform init
+#    terraform plan -var-file="terraform.tfvars"
+#    terraform apply -var-file="terraform.tfvars"
+#

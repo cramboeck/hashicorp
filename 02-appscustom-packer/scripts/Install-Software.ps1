@@ -1,5 +1,7 @@
-# Enable debug mode
-$DebugMode = $true
+# Debug mode parameter - kann beim Aufruf überschrieben werden
+param(
+    [bool]$DebugMode = $false
+)
 
 # === Setup logging ===
 $logFolder = "C:\InstallLogs"

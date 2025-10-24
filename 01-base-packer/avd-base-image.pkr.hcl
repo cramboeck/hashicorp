@@ -47,6 +47,9 @@ source "azure-arm" "avd" {
   vtpm_enabled        = true
 
   # 🔌 Kommunikation via WinRM
+  # HINWEIS: WinRM über HTTP ist für temporäre Packer-Build-VMs akzeptabel,
+  # da diese VMs nur während des Builds existieren und in einem isolierten Netzwerk laufen.
+  # In Produktionsumgebungen sollte WinRM über HTTPS mit Zertifikaten konfiguriert werden.
   communicator      = "winrm"
   winrm_username    = "packer"
   winrm_password    = var.winrm_password
