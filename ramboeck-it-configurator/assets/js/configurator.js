@@ -1,22 +1,36 @@
 (function($) {
     'use strict';
 
-    class RamboeckConfigurator {
+    class RamboeckSmartConfigurator {
         constructor() {
-            this.currentStep = 1;
-            this.totalSteps = 4;
-            this.selectedServices = {
-                cloud: { selected: false, config: {} },
-                vdi: { selected: false, config: {} },
-                monitoring: { selected: false, config: {} },
-                backup: { selected: false, config: {} }
+            this.currentStep = 0;
+            this.totalSteps = 6;
+
+            // User Profil Daten
+            this.userProfile = {
+                companySize: null,
+                employeeCount: 0,
+                infrastructure: [],
+                challenges: [],
+                industry: null
             };
+
+            // Service-Auswahl und Konfiguration
+            this.selectedServices = {
+                cloud: { selected: false, recommended: false, config: {}, priority: 0 },
+                vdi: { selected: false, recommended: false, config: {}, priority: 0 },
+                monitoring: { selected: false, recommended: false, config: {}, priority: 0 },
+                backup: { selected: false, recommended: false, config: {}, priority: 0 }
+            };
+
             this.contactData = {};
+
+            // Preismodell
             this.pricing = {
-                cloud: { base: 150, perUser: 25 },
-                vdi: { base: 200, perUser: 35 },
-                monitoring: { base: 100, perDevice: 15 },
-                backup: { base: 120, perGB: 2 }
+                cloud: { base: 150, perUser: 25, smallDiscount: 0.9, largeMultiplier: 1.2 },
+                vdi: { base: 200, perUser: 35, performance: { basic: 1, standard: 1.5, premium: 2.5 } },
+                monitoring: { base: 100, perDevice: 15, scope: { basic: 1, standard: 1.5, advanced: 2 } },
+                backup: { base: 120, perGB: 2, frequency: { daily: 1, hourly: 1.3, realtime: 1.8 } }
             };
 
             this.init();
@@ -30,59 +44,97 @@
         bindEvents() {
             const self = this;
 
-            // Service-Karten auswählen
-            $('.service-card').on('click', function(e) {
-                if (!$(e.target).is('input')) {
-                    const checkbox = $(this).find('input[type="checkbox"]');
-                    checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
-                }
-            });
-
-            // Service-Checkbox
-            $('input[name="services[]"]').on('change', function() {
-                const service = $(this).val();
-                const isChecked = $(this).is(':checked');
-
-                self.selectedServices[service].selected = isChecked;
-                $(this).closest('.service-card').toggleClass('selected', isChecked);
-
-                self.updateServiceConfigurations();
-            });
+            // Start Button
+            $('#btn-start').on('click', () => this.nextStep());
 
             // Navigation
-            $('#btn-next').on('click', () => this.nextStep());
-            $('#btn-prev').on('click', () => this.prevStep());
-            $('#btn-submit').on('click', () => this.submitConfiguration());
-            $('#btn-edit').on('click', () => this.goToStep(1));
+            $('#btn-continue').on('click', () => this.nextStep());
+            $('#btn-back').on('click', () => this.prevStep());
 
-            // Fortschrittsschritte klickbar machen
-            $('.progress-step').on('click', function() {
-                const step = parseInt($(this).data('step'));
-                if (step < self.currentStep) {
-                    self.goToStep(step);
+            // Schritt 1: Company Size Selection
+            $('.size-card').on('click', function() {
+                $('.size-card').removeClass('selected');
+                $(this).addClass('selected');
+
+                const size = $(this).data('size');
+                const range = $(this).data('range');
+
+                self.userProfile.companySize = size;
+
+                // Setze automatische Mitarbeiterzahl basierend auf Kategorie
+                const ranges = {
+                    'small': 5,
+                    'medium': 25,
+                    'large': 100,
+                    'enterprise': 300
+                };
+                self.userProfile.employeeCount = ranges[size] || 25;
+            });
+
+            // Schritt 2: Infrastructure Selection
+            $('.checkbox-card input[type="checkbox"]').on('change', function() {
+                $(this).closest('.checkbox-card').toggleClass('selected', $(this).is(':checked'));
+
+                const value = $(this).val();
+                if ($(this).is(':checked')) {
+                    if (!self.userProfile.infrastructure.includes(value)) {
+                        self.userProfile.infrastructure.push(value);
+                    }
+                } else {
+                    self.userProfile.infrastructure = self.userProfile.infrastructure.filter(v => v !== value);
                 }
+            });
+
+            // Schritt 3: Challenges Selection
+            $('.challenge-card input[type="checkbox"]').on('change', function() {
+                $(this).closest('.challenge-card').toggleClass('selected', $(this).is(':checked'));
+
+                const challenge = $(this).val();
+                if ($(this).is(':checked')) {
+                    if (!self.userProfile.challenges.includes(challenge)) {
+                        self.userProfile.challenges.push(challenge);
+                    }
+                } else {
+                    self.userProfile.challenges = self.userProfile.challenges.filter(c => c !== challenge);
+                }
+            });
+
+            // Show all services toggle
+            $('#show-all-services').on('click', function() {
+                $('.all-services-grid').slideToggle();
+                $(this).find('svg').toggleClass('rotated');
             });
         }
 
         nextStep() {
             if (this.validateStep(this.currentStep)) {
+                // Spezielle Logik für Schritt 3 -> 4: Generiere Empfehlungen
+                if (this.currentStep === 3) {
+                    this.generateRecommendations();
+                }
+
+                // Spezielle Logik für Schritt 4 -> 5: Bereite Konfiguration vor
+                if (this.currentStep === 4) {
+                    this.prepareServiceConfiguration();
+                }
+
+                // Spezielle Logik für Schritt 5 -> 6: Bereite Summary vor
+                if (this.currentStep === 5) {
+                    this.prepareFinalSummary();
+                }
+
                 if (this.currentStep < this.totalSteps) {
                     this.currentStep++;
                     this.showStep(this.currentStep);
+                } else {
+                    this.submitConfiguration();
                 }
             }
         }
 
         prevStep() {
-            if (this.currentStep > 1) {
+            if (this.currentStep > 0) {
                 this.currentStep--;
-                this.showStep(this.currentStep);
-            }
-        }
-
-        goToStep(step) {
-            if (step >= 1 && step <= this.totalSteps) {
-                this.currentStep = step;
                 this.showStep(this.currentStep);
             }
         }
@@ -93,22 +145,29 @@
             $(`.configurator-step[data-step="${step}"]`).addClass('active');
 
             // Navigation aktualisieren
-            if (step === 1) {
-                $('#btn-prev').hide();
+            if (step === 0) {
+                $('#btn-back').hide();
+                $('#btn-continue').hide();
             } else {
-                $('#btn-prev').show();
+                $('#btn-back').show();
+                $('#btn-continue').show();
             }
 
+            // Button-Text anpassen
             if (step === this.totalSteps) {
-                $('#btn-next').hide();
-                this.updateSummary();
+                $('#btn-continue').html(`
+                    Angebot anfordern
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M16 2L8 10L4 6" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                `);
             } else {
-                $('#btn-next').show();
-            }
-
-            // Spezielle Aktionen für bestimmte Schritte
-            if (step === 2) {
-                this.updateServiceConfigurations();
+                $('#btn-continue').html(`
+                    Weiter
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M5 10H15M15 10L10 5M15 10L10 15"/>
+                    </svg>
+                `);
             }
 
             this.updateProgress();
@@ -117,7 +176,32 @@
 
         validateStep(step) {
             switch(step) {
+                case 0:
+                    return true; // Welcome screen, immer valid
+
                 case 1:
+                    if (!this.userProfile.companySize) {
+                        this.showMessage('Bitte wählen Sie Ihre Unternehmensgröße aus.', 'error');
+                        return false;
+                    }
+                    break;
+
+                case 2:
+                    if (this.userProfile.infrastructure.length === 0) {
+                        this.showMessage('Bitte wählen Sie mindestens eine Option aus.', 'error');
+                        return false;
+                    }
+                    break;
+
+                case 3:
+                    if (this.userProfile.challenges.length === 0) {
+                        this.showMessage('Bitte wählen Sie mindestens eine Herausforderung aus.', 'error');
+                        return false;
+                    }
+                    break;
+
+                case 4:
+                    // Prüfe ob mindestens ein Service ausgewählt ist
                     const hasService = Object.values(this.selectedServices).some(s => s.selected);
                     if (!hasService) {
                         this.showMessage('Bitte wählen Sie mindestens einen Service aus.', 'error');
@@ -125,8 +209,8 @@
                     }
                     break;
 
-                case 2:
-                    // Validierung der Service-Konfigurationen
+                case 5:
+                    // Validiere Service-Konfigurationen
                     let configValid = true;
                     for (const [service, data] of Object.entries(this.selectedServices)) {
                         if (data.selected) {
@@ -147,8 +231,8 @@
                     }
                     break;
 
-                case 3:
-                    // Kontaktformular validieren
+                case 6:
+                    // Validiere Kontaktformular
                     const form = $('#contact-form')[0];
                     if (!form.checkValidity()) {
                         form.reportValidity();
@@ -161,159 +245,389 @@
         }
 
         updateProgress() {
-            const progress = (this.currentStep / this.totalSteps) * 100;
+            const progress = ((this.currentStep) / this.totalSteps) * 100;
             $('.progress-bar-fill').css('width', `${progress}%`);
+            $('#current-step').text(this.currentStep);
+            $('#total-steps').text(this.totalSteps);
+            $('.progress-percentage').text(Math.round(progress) + '%');
+        }
 
-            $('.progress-step').each((index, el) => {
-                const stepNum = index + 1;
-                if (stepNum < this.currentStep) {
-                    $(el).addClass('completed').removeClass('active');
-                } else if (stepNum === this.currentStep) {
-                    $(el).addClass('active').removeClass('completed');
+        generateRecommendations() {
+            // Smart Recommendation Engine
+            const recommendations = {};
+
+            // Analysiere Herausforderungen und empfehle Services
+            $('.challenge-card input:checked').each(function() {
+                const card = $(this).closest('.challenge-card');
+                const recommends = card.data('recommends');
+                if (recommends) {
+                    recommends.split(',').forEach(service => {
+                        recommendations[service] = (recommendations[service] || 0) + 1;
+                    });
+                }
+            });
+
+            // Setze Prioritäten basierend auf Recommendations
+            for (const [service, score] of Object.entries(recommendations)) {
+                if (this.selectedServices[service]) {
+                    this.selectedServices[service].priority = score;
+                    this.selectedServices[service].recommended = true;
+                }
+            }
+
+            // Zusätzliche Logik basierend auf Unternehmensgröße
+            if (this.userProfile.companySize === 'small') {
+                this.selectedServices.cloud.priority += 1;
+            } else if (this.userProfile.companySize === 'enterprise') {
+                this.selectedServices.monitoring.priority += 2;
+                this.selectedServices.backup.priority += 2;
+            }
+
+            // Infrastruktur-basierte Empfehlungen
+            if (this.userProfile.infrastructure.includes('none')) {
+                this.selectedServices.cloud.priority += 3;
+                this.selectedServices.vdi.priority += 2;
+            }
+            if (this.userProfile.infrastructure.includes('on-premise')) {
+                this.selectedServices.backup.priority += 2;
+                this.selectedServices.monitoring.priority += 2;
+            }
+
+            // Rendere Empfehlungen
+            this.renderRecommendations();
+        }
+
+        renderRecommendations() {
+            const container = $('.service-recommendations');
+            container.empty();
+
+            // Sortiere Services nach Priorität
+            const sortedServices = Object.entries(this.selectedServices)
+                .sort((a, b) => b[1].priority - a[1].priority);
+
+            const serviceInfo = {
+                cloud: {
+                    title: 'Cloud Services',
+                    icon: `<svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                        <path d="M48 37.5C51.315 37.5 54 34.815 54 31.5C54 28.185 51.315 25.5 48 25.5C47.835 25.5 47.67 25.5075 47.5075 25.5225C47.0925 19.89 42.375 15.5 36.6 15.5C31.98 15.5 27.99 18.375 26.25 22.5C25.755 22.425 25.2525 22.5 24.75 22.5C20.61 22.5 17.25 25.86 17.25 30C17.25 34.14 20.61 37.5 24.75 37.5H48Z" stroke="currentColor" stroke-width="2"/>
+                    </svg>`,
+                    description: 'Flexible Cloud-Infrastruktur für Skalierbarkeit und Kosteneffizienz',
+                    benefits: ['Skalierbar', 'Kosteneffizient', 'Hochverfügbar']
+                },
+                vdi: {
+                    title: 'Virtuelle Arbeitsplätze (VDI)',
+                    icon: `<svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                        <rect x="10" y="12" width="40" height="28" rx="2" stroke="currentColor" stroke-width="2"/>
+                        <path d="M16 45H44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M30 40V45" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>`,
+                    description: 'Sichere Remote-Desktop-Lösungen für flexibles Arbeiten von überall',
+                    benefits: ['Remote-Ready', 'Sicher', 'Zentral verwaltet']
+                },
+                monitoring: {
+                    title: '24/7 IT-Monitoring',
+                    icon: `<svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                        <circle cx="30" cy="30" r="20" stroke="currentColor" stroke-width="2"/>
+                        <path d="M15 30L22 23L28 28L35 20L45 30" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>`,
+                    description: 'Proaktive Überwachung zur Vermeidung von Ausfällen und Problemen',
+                    benefits: ['24/7 Überwachung', 'Früherkennung', 'Schnelle Reaktion']
+                },
+                backup: {
+                    title: 'Backup & Disaster Recovery',
+                    icon: `<svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                        <path d="M45 35V45C45 46.6569 43.6569 48 42 48H18C16.3431 48 15 46.6569 15 45V35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M30 12V35M30 35L22 27M30 35L38 27" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>`,
+                    description: 'Automatische Datensicherung für maximale Sicherheit und schnelle Wiederherstellung',
+                    benefits: ['Automatisch', 'Sicher', 'Schnelle Wiederherstellung']
+                }
+            };
+
+            sortedServices.forEach(([serviceKey, serviceData]) => {
+                const info = serviceInfo[serviceKey];
+                const isRecommended = serviceData.priority > 0;
+                const isSelected = serviceData.selected;
+
+                const card = $(`
+                    <div class="recommendation-card ${isRecommended ? 'recommended' : ''} ${isSelected ? 'selected' : ''}" data-service="${serviceKey}">
+                        <div class="recommendation-header">
+                            ${isRecommended ? '<span class="recommended-badge">Empfohlen für Sie</span>' : ''}
+                            <div class="service-icon">${info.icon}</div>
+                        </div>
+                        <h3>${info.title}</h3>
+                        <p class="service-description">${info.description}</p>
+                        <div class="service-benefits">
+                            ${info.benefits.map(b => `<span class="benefit-tag">✓ ${b}</span>`).join('')}
+                        </div>
+                        <button type="button" class="btn ${isSelected ? 'btn-selected' : 'btn-outline'} select-service-btn" data-service="${serviceKey}">
+                            ${isSelected ? '✓ Ausgewählt' : 'Auswählen'}
+                        </button>
+                    </div>
+                `);
+
+                container.append(card);
+            });
+
+            // Event-Handler für Service-Auswahl
+            $('.select-service-btn').on('click', (e) => {
+                const btn = $(e.currentTarget);
+                const service = btn.data('service');
+                const card = btn.closest('.recommendation-card');
+
+                this.selectedServices[service].selected = !this.selectedServices[service].selected;
+
+                if (this.selectedServices[service].selected) {
+                    btn.text('✓ Ausgewählt').removeClass('btn-outline').addClass('btn-selected');
+                    card.addClass('selected');
                 } else {
-                    $(el).removeClass('active completed');
+                    btn.text('Auswählen').removeClass('btn-selected').addClass('btn-outline');
+                    card.removeClass('selected');
                 }
             });
         }
 
-        updateServiceConfigurations() {
-            const container = $('#service-configurations');
+        prepareServiceConfiguration() {
+            const container = $('#interactive-configurations');
             container.empty();
 
             for (const [service, data] of Object.entries(this.selectedServices)) {
                 if (data.selected) {
-                    container.append(this.generateServiceConfig(service));
+                    const config = this.generateInteractiveConfig(service);
+                    container.append(config);
                 }
             }
 
-            // Event-Listener für Konfigurationsänderungen
-            container.find('input, select').on('change', () => {
+            // Event-Listener für Live-Preisberechnung
+            container.find('input, select').on('change input', () => {
                 this.saveServiceConfigurations();
-                this.calculatePrice();
+                this.calculateAndUpdatePrice();
             });
 
-            this.calculatePrice();
+            this.calculateAndUpdatePrice();
         }
 
-        generateServiceConfig(service) {
+        generateInteractiveConfig(service) {
+            const baseEmployees = this.userProfile.employeeCount;
+
             const configs = {
                 cloud: `
-                    <div class="service-config-card" id="config-cloud">
-                        <h3>Cloud Services Konfiguration</h3>
-                        <div class="form-group">
-                            <label>Cloud-Typ</label>
-                            <select name="cloud_type" required>
-                                <option value="">Bitte wählen</option>
-                                <option value="azure">Microsoft Azure</option>
-                                <option value="aws">Amazon AWS</option>
-                                <option value="hybrid">Hybrid Cloud</option>
-                            </select>
+                    <div class="interactive-config-card" id="config-cloud">
+                        <div class="config-header">
+                            <h3>☁️ Cloud Services Konfiguration</h3>
+                            <p class="config-subtitle">Passen Sie die Cloud-Ressourcen an Ihre Bedürfnisse an</p>
                         </div>
-                        <div class="form-group">
-                            <label>Anzahl der Benutzer</label>
-                            <input type="number" name="cloud_users" min="1" max="1000" value="10" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Speicher (GB)</label>
-                            <input type="number" name="cloud_storage" min="100" max="10000" value="500" step="100" required>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="cloud_ha" name="cloud_ha">
-                            <label for="cloud_ha">High Availability</label>
+
+                        <div class="config-body">
+                            <div class="slider-group">
+                                <label>Anzahl der Benutzer: <span class="slider-value" id="cloud-users-value">${baseEmployees}</span></label>
+                                <input type="range" name="cloud_users" min="1" max="500" value="${baseEmployees}" class="interactive-slider">
+                            </div>
+
+                            <div class="slider-group">
+                                <label>Speicher (GB): <span class="slider-value" id="cloud-storage-value">500</span></label>
+                                <input type="range" name="cloud_storage" min="100" max="10000" value="500" step="100" class="interactive-slider">
+                            </div>
+
+                            <div class="select-group">
+                                <label>Cloud-Plattform</label>
+                                <div class="radio-cards">
+                                    <div class="radio-card">
+                                        <input type="radio" id="cloud-azure" name="cloud_type" value="azure" checked>
+                                        <label for="cloud-azure">
+                                            <strong>Microsoft Azure</strong>
+                                            <span>Enterprise-Ready</span>
+                                        </label>
+                                    </div>
+                                    <div class="radio-card">
+                                        <input type="radio" id="cloud-aws" name="cloud_type" value="aws">
+                                        <label for="cloud-aws">
+                                            <strong>Amazon AWS</strong>
+                                            <span>Maximale Flexibilität</span>
+                                        </label>
+                                    </div>
+                                    <div class="radio-card">
+                                        <input type="radio" id="cloud-hybrid" name="cloud_type" value="hybrid">
+                                        <label for="cloud-hybrid">
+                                            <strong>Hybrid Cloud</strong>
+                                            <span>Best of Both Worlds</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="toggle-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" name="cloud_ha" class="toggle-input">
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">
+                                        <strong>High Availability</strong>
+                                        <small>99.99% Verfügbarkeit (+€100/Monat)</small>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 `,
                 vdi: `
-                    <div class="service-config-card" id="config-vdi">
-                        <h3>Virtuelle Arbeitsplätze Konfiguration</h3>
-                        <div class="form-group">
-                            <label>Anzahl der Arbeitsplätze</label>
-                            <input type="number" name="vdi_users" min="1" max="500" value="10" required>
+                    <div class="interactive-config-card" id="config-vdi">
+                        <div class="config-header">
+                            <h3>💻 Virtuelle Arbeitsplätze Konfiguration</h3>
+                            <p class="config-subtitle">Definieren Sie Ihre VDI-Infrastruktur</p>
                         </div>
-                        <div class="form-group">
-                            <label>Leistungsklasse</label>
-                            <select name="vdi_performance" required>
-                                <option value="">Bitte wählen</option>
-                                <option value="basic">Basic (2 vCPU, 4GB RAM)</option>
-                                <option value="standard">Standard (4 vCPU, 8GB RAM)</option>
-                                <option value="premium">Premium (8 vCPU, 16GB RAM)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Betriebssystem</label>
-                            <select name="vdi_os" required>
-                                <option value="">Bitte wählen</option>
-                                <option value="windows10">Windows 10</option>
-                                <option value="windows11">Windows 11</option>
-                                <option value="linux">Linux</option>
-                            </select>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="vdi_office" name="vdi_office">
-                            <label for="vdi_office">Microsoft Office 365</label>
+
+                        <div class="config-body">
+                            <div class="slider-group">
+                                <label>Anzahl der Arbeitsplätze: <span class="slider-value" id="vdi-users-value">${baseEmployees}</span></label>
+                                <input type="range" name="vdi_users" min="1" max="500" value="${baseEmployees}" class="interactive-slider">
+                            </div>
+
+                            <div class="select-group">
+                                <label>Leistungsklasse</label>
+                                <div class="radio-cards">
+                                    <div class="radio-card">
+                                        <input type="radio" id="vdi-basic" name="vdi_performance" value="basic">
+                                        <label for="vdi-basic">
+                                            <strong>Basic</strong>
+                                            <span>2 vCPU, 4GB RAM</span>
+                                            <small>Office-Anwendungen</small>
+                                        </label>
+                                    </div>
+                                    <div class="radio-card">
+                                        <input type="radio" id="vdi-standard" name="vdi_performance" value="standard" checked>
+                                        <label for="vdi-standard">
+                                            <strong>Standard</strong>
+                                            <span>4 vCPU, 8GB RAM</span>
+                                            <small>Business-Anwendungen</small>
+                                        </label>
+                                    </div>
+                                    <div class="radio-card">
+                                        <input type="radio" id="vdi-premium" name="vdi_performance" value="premium">
+                                        <label for="vdi-premium">
+                                            <strong>Premium</strong>
+                                            <span>8 vCPU, 16GB RAM</span>
+                                            <small>CAD, Video-Bearbeitung</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="toggle-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" name="vdi_office" class="toggle-input">
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">
+                                        <strong>Microsoft Office 365</strong>
+                                        <small>Pro Arbeitsplatz (+€12/Monat)</small>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 `,
                 monitoring: `
-                    <div class="service-config-card" id="config-monitoring">
-                        <h3>Monitoring Konfiguration</h3>
-                        <div class="form-group">
-                            <label>Anzahl der Geräte/Server</label>
-                            <input type="number" name="monitoring_devices" min="1" max="500" value="10" required>
+                    <div class="interactive-config-card" id="config-monitoring">
+                        <div class="config-header">
+                            <h3>📊 Monitoring Konfiguration</h3>
+                            <p class="config-subtitle">Überwachen Sie Ihre IT-Infrastruktur</p>
                         </div>
-                        <div class="form-group">
-                            <label>Monitoring-Umfang</label>
-                            <select name="monitoring_scope" required>
-                                <option value="">Bitte wählen</option>
-                                <option value="basic">Basic (Verfügbarkeit)</option>
-                                <option value="standard">Standard (Performance + Logs)</option>
-                                <option value="advanced">Advanced (Application Performance)</option>
-                            </select>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="monitoring_247" name="monitoring_247">
-                            <label for="monitoring_247">24/7 Bereitschaftsdienst</label>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="monitoring_alerts" name="monitoring_alerts">
-                            <label for="monitoring_alerts">SMS/E-Mail Alarme</label>
+
+                        <div class="config-body">
+                            <div class="slider-group">
+                                <label>Anzahl der Geräte/Server: <span class="slider-value" id="monitoring-devices-value">10</span></label>
+                                <input type="range" name="monitoring_devices" min="1" max="500" value="10" class="interactive-slider">
+                            </div>
+
+                            <div class="select-group">
+                                <label>Monitoring-Umfang</label>
+                                <select name="monitoring_scope" class="styled-select">
+                                    <option value="basic">Basic - Verfügbarkeit & Uptime</option>
+                                    <option value="standard" selected>Standard - Performance & Logs</option>
+                                    <option value="advanced">Advanced - Application Performance Monitoring</option>
+                                </select>
+                            </div>
+
+                            <div class="toggle-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" name="monitoring_247" class="toggle-input">
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">
+                                        <strong>24/7 Bereitschaftsdienst</strong>
+                                        <small>Reaktion innerhalb 15 Minuten (+€300/Monat)</small>
+                                    </span>
+                                </label>
+                            </div>
+
+                            <div class="toggle-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" name="monitoring_alerts" class="toggle-input" checked>
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">
+                                        <strong>SMS & E-Mail Alarme</strong>
+                                        <small>Sofortige Benachrichtigung bei Problemen</small>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 `,
                 backup: `
-                    <div class="service-config-card" id="config-backup">
-                        <h3>Backup & Recovery Konfiguration</h3>
-                        <div class="form-group">
-                            <label>Backup-Volumen (GB)</label>
-                            <input type="number" name="backup_volume" min="100" max="50000" value="1000" step="100" required>
+                    <div class="interactive-config-card" id="config-backup">
+                        <div class="config-header">
+                            <h3>💾 Backup & Recovery Konfiguration</h3>
+                            <p class="config-subtitle">Sichern Sie Ihre wertvollen Daten</p>
                         </div>
-                        <div class="form-group">
-                            <label>Backup-Häufigkeit</label>
-                            <select name="backup_frequency" required>
-                                <option value="">Bitte wählen</option>
-                                <option value="daily">Täglich</option>
-                                <option value="hourly">Stündlich</option>
-                                <option value="realtime">Echtzeit</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Aufbewahrung</label>
-                            <select name="backup_retention" required>
-                                <option value="">Bitte wählen</option>
-                                <option value="30">30 Tage</option>
-                                <option value="90">90 Tage</option>
-                                <option value="365">1 Jahr</option>
-                            </select>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="backup_offsite" name="backup_offsite">
-                            <label for="backup_offsite">Offsite Backup</label>
+
+                        <div class="config-body">
+                            <div class="slider-group">
+                                <label>Backup-Volumen (GB): <span class="slider-value" id="backup-volume-value">1000</span></label>
+                                <input type="range" name="backup_volume" min="100" max="50000" value="1000" step="100" class="interactive-slider">
+                            </div>
+
+                            <div class="select-group">
+                                <label>Backup-Häufigkeit</label>
+                                <select name="backup_frequency" class="styled-select">
+                                    <option value="daily" selected>Täglich</option>
+                                    <option value="hourly">Stündlich</option>
+                                    <option value="realtime">Echtzeit (Continuous Data Protection)</option>
+                                </select>
+                            </div>
+
+                            <div class="select-group">
+                                <label>Aufbewahrungsdauer</label>
+                                <select name="backup_retention" class="styled-select">
+                                    <option value="30" selected>30 Tage</option>
+                                    <option value="90">90 Tage</option>
+                                    <option value="365">1 Jahr</option>
+                                    <option value="2555">7 Jahre (GoBD-konform)</option>
+                                </select>
+                            </div>
+
+                            <div class="toggle-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" name="backup_offsite" class="toggle-input" checked>
+                                    <span class="toggle-switch"></span>
+                                    <span class="toggle-text">
+                                        <strong>Offsite Backup</strong>
+                                        <small>Georedundante Speicherung (+€150/Monat)</small>
+                                    </span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 `
             };
 
-            return configs[service] || '';
+            const html = $(configs[service] || '');
+
+            // Slider-Updates
+            html.find('.interactive-slider').on('input', function() {
+                const value = $(this).val();
+                const name = $(this).attr('name');
+                $(`#${name.replace('_', '-')}-value`).text(value);
+            });
+
+            return html;
         }
 
         saveServiceConfigurations() {
@@ -330,50 +644,80 @@
             }
         }
 
-        calculatePrice() {
+        calculateAndUpdatePrice() {
             let totalPrice = 0;
 
             for (const [service, data] of Object.entries(this.selectedServices)) {
                 if (data.selected) {
+                    const config = data.config;
+
                     switch(service) {
                         case 'cloud':
-                            const cloudUsers = parseInt(data.config.cloud_users) || 0;
-                            totalPrice += this.pricing.cloud.base + (cloudUsers * this.pricing.cloud.perUser);
-                            if (data.config.cloud_ha) totalPrice += 100;
+                            const cloudUsers = parseInt(config.cloud_users) || 0;
+                            let cloudPrice = this.pricing.cloud.base + (cloudUsers * this.pricing.cloud.perUser);
+                            if (config.cloud_ha) cloudPrice += 100;
+                            if (this.userProfile.companySize === 'small') cloudPrice *= this.pricing.cloud.smallDiscount;
+                            totalPrice += cloudPrice;
                             break;
 
                         case 'vdi':
-                            const vdiUsers = parseInt(data.config.vdi_users) || 0;
-                            let vdiMultiplier = 1;
-                            if (data.config.vdi_performance === 'standard') vdiMultiplier = 1.5;
-                            if (data.config.vdi_performance === 'premium') vdiMultiplier = 2.5;
-                            totalPrice += this.pricing.vdi.base + (vdiUsers * this.pricing.vdi.perUser * vdiMultiplier);
-                            if (data.config.vdi_office) totalPrice += vdiUsers * 12;
+                            const vdiUsers = parseInt(config.vdi_users) || 0;
+                            const perfMultiplier = this.pricing.vdi.performance[config.vdi_performance] || 1;
+                            let vdiPrice = this.pricing.vdi.base + (vdiUsers * this.pricing.vdi.perUser * perfMultiplier);
+                            if (config.vdi_office) vdiPrice += vdiUsers * 12;
+                            totalPrice += vdiPrice;
                             break;
 
                         case 'monitoring':
-                            const devices = parseInt(data.config.monitoring_devices) || 0;
-                            let monitoringMultiplier = 1;
-                            if (data.config.monitoring_scope === 'standard') monitoringMultiplier = 1.5;
-                            if (data.config.monitoring_scope === 'advanced') monitoringMultiplier = 2;
-                            totalPrice += this.pricing.monitoring.base + (devices * this.pricing.monitoring.perDevice * monitoringMultiplier);
-                            if (data.config.monitoring_247) totalPrice += 300;
+                            const devices = parseInt(config.monitoring_devices) || 0;
+                            const scopeMultiplier = this.pricing.monitoring.scope[config.monitoring_scope] || 1;
+                            let monPrice = this.pricing.monitoring.base + (devices * this.pricing.monitoring.perDevice * scopeMultiplier);
+                            if (config.monitoring_247) monPrice += 300;
+                            totalPrice += monPrice;
                             break;
 
                         case 'backup':
-                            const volume = parseInt(data.config.backup_volume) || 0;
-                            let backupMultiplier = 1;
-                            if (data.config.backup_frequency === 'hourly') backupMultiplier = 1.3;
-                            if (data.config.backup_frequency === 'realtime') backupMultiplier = 1.8;
-                            totalPrice += this.pricing.backup.base + (volume * this.pricing.backup.perGB * backupMultiplier);
-                            if (data.config.backup_offsite) totalPrice += 150;
+                            const volume = parseInt(config.backup_volume) || 0;
+                            const freqMultiplier = this.pricing.backup.frequency[config.backup_frequency] || 1;
+                            let backupPrice = this.pricing.backup.base + (volume * this.pricing.backup.perGB * freqMultiplier);
+                            if (config.backup_offsite) backupPrice += 150;
+                            totalPrice += backupPrice;
                             break;
                     }
                 }
             }
 
-            $('#total-price').text(Math.round(totalPrice));
+            $('#live-price').text(Math.round(totalPrice));
             return totalPrice;
+        }
+
+        prepareFinalSummary() {
+            const summaryContainer = $('#quick-summary');
+            summaryContainer.empty();
+
+            let summary = '<ul class="summary-list">';
+            for (const [service, data] of Object.entries(this.selectedServices)) {
+                if (data.selected) {
+                    const serviceName = this.getServiceName(service);
+                    summary += `<li><strong>${serviceName}</strong></li>`;
+                }
+            }
+            summary += '</ul>';
+
+            summaryContainer.html(summary);
+
+            const finalPrice = this.calculateAndUpdatePrice();
+            $('#final-price').text(Math.round(finalPrice));
+        }
+
+        getServiceName(service) {
+            const names = {
+                cloud: 'Cloud Services',
+                vdi: 'Virtuelle Arbeitsplätze',
+                monitoring: '24/7 IT-Monitoring',
+                backup: 'Backup & Disaster Recovery'
+            };
+            return names[service] || service;
         }
 
         saveContactData() {
@@ -386,73 +730,6 @@
             };
         }
 
-        updateSummary() {
-            const servicesList = $('#summary-services-list');
-            servicesList.empty();
-
-            for (const [service, data] of Object.entries(this.selectedServices)) {
-                if (data.selected) {
-                    const serviceName = this.getServiceName(service);
-                    const summary = this.generateServiceSummary(service, data.config);
-
-                    servicesList.append(`
-                        <div class="summary-service">
-                            <h4>${serviceName}</h4>
-                            <ul>${summary}</ul>
-                        </div>
-                    `);
-                }
-            }
-
-            this.calculatePrice();
-        }
-
-        getServiceName(service) {
-            const names = {
-                cloud: 'Cloud Services',
-                vdi: 'Virtuelle Arbeitsplätze',
-                monitoring: 'Monitoring',
-                backup: 'Backup & Recovery'
-            };
-            return names[service] || service;
-        }
-
-        generateServiceSummary(service, config) {
-            let summary = '';
-
-            for (const [key, value] of Object.entries(config)) {
-                if (value) {
-                    const label = this.formatConfigLabel(key);
-                    const displayValue = typeof value === 'boolean' ? 'Ja' : value;
-                    summary += `<li><strong>${label}:</strong> ${displayValue}</li>`;
-                }
-            }
-
-            return summary;
-        }
-
-        formatConfigLabel(key) {
-            const labels = {
-                cloud_type: 'Cloud-Typ',
-                cloud_users: 'Benutzer',
-                cloud_storage: 'Speicher (GB)',
-                cloud_ha: 'High Availability',
-                vdi_users: 'Arbeitsplätze',
-                vdi_performance: 'Leistungsklasse',
-                vdi_os: 'Betriebssystem',
-                vdi_office: 'Office 365',
-                monitoring_devices: 'Geräte',
-                monitoring_scope: 'Umfang',
-                monitoring_247: '24/7 Bereitschaft',
-                monitoring_alerts: 'Alarme',
-                backup_volume: 'Volumen (GB)',
-                backup_frequency: 'Häufigkeit',
-                backup_retention: 'Aufbewahrung',
-                backup_offsite: 'Offsite Backup'
-            };
-            return labels[key] || key;
-        }
-
         submitConfiguration() {
             const submitData = {
                 action: 'ramboeck_save_lead',
@@ -463,10 +740,11 @@
                 phone: this.contactData.phone,
                 services: this.selectedServices,
                 configuration: this.selectedServices,
-                estimated_price: this.calculatePrice()
+                user_profile: this.userProfile,
+                estimated_price: this.calculateAndUpdatePrice()
             };
 
-            $('#btn-submit').prop('disabled', true).text('Wird gesendet...');
+            $('#btn-continue').prop('disabled', true).text('Wird gesendet...');
 
             $.ajax({
                 url: ramboeckConfig.ajaxUrl,
@@ -474,20 +752,58 @@
                 data: submitData,
                 success: (response) => {
                     if (response.success) {
-                        this.showMessage(response.data.message, 'success');
-                        setTimeout(() => {
-                            this.resetConfigurator();
-                        }, 3000);
+                        this.showSuccessScreen(response.data.message);
                     } else {
                         this.showMessage(response.data.message, 'error');
-                        $('#btn-submit').prop('disabled', false).text('Angebot anfordern');
+                        $('#btn-continue').prop('disabled', false).html(`
+                            Angebot anfordern
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M16 2L8 10L4 6" stroke="currentColor" stroke-width="2" fill="none"/>
+                            </svg>
+                        `);
                     }
                 },
                 error: () => {
                     this.showMessage('Ein Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.', 'error');
-                    $('#btn-submit').prop('disabled', false).text('Angebot anfordern');
+                    $('#btn-continue').prop('disabled', false).html(`
+                        Angebot anfordern
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M16 2L8 10L4 6" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    `);
                 }
             });
+        }
+
+        showSuccessScreen(message) {
+            $('.configurator-step').removeClass('active');
+            $('.configurator-navigation').hide();
+            $('.configurator-progress').hide();
+
+            const successHTML = `
+                <div class="success-screen active">
+                    <div class="success-icon">
+                        <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                            <circle cx="50" cy="50" r="48" stroke="#28a745" stroke-width="3"/>
+                            <path d="M30 50L45 65L70 35" stroke="#28a745" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <h2>Vielen Dank für Ihre Anfrage!</h2>
+                    <p>${message}</p>
+                    <p>Wir haben Ihnen eine Bestätigung per E-Mail gesendet und werden uns in Kürze bei Ihnen melden.</p>
+                    <div class="success-details">
+                        <h3>Was passiert als Nächstes?</h3>
+                        <ul>
+                            <li>✓ Sie erhalten eine Bestätigungs-E-Mail</li>
+                            <li>✓ Unser Team prüft Ihre Anforderungen</li>
+                            <li>✓ Wir erstellen ein individuelles Angebot</li>
+                            <li>✓ Sie erhalten Ihr Angebot innerhalb von 24 Stunden</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+
+            $('.ramboeck-configurator').append(successHTML);
         }
 
         showMessage(message, type) {
@@ -501,23 +817,6 @@
             }, 5000);
         }
 
-        resetConfigurator() {
-            this.currentStep = 1;
-            this.selectedServices = {
-                cloud: { selected: false, config: {} },
-                vdi: { selected: false, config: {} },
-                monitoring: { selected: false, config: {} },
-                backup: { selected: false, config: {} }
-            };
-            this.contactData = {};
-
-            $('input[name="services[]"]').prop('checked', false);
-            $('.service-card').removeClass('selected');
-            $('#contact-form')[0].reset();
-
-            this.showStep(1);
-        }
-
         scrollToTop() {
             $('html, body').animate({
                 scrollTop: $('.ramboeck-configurator').offset().top - 100
@@ -528,7 +827,7 @@
     // Initialisiere Konfigurator
     $(document).ready(function() {
         if ($('.ramboeck-configurator').length) {
-            new RamboeckConfigurator();
+            new RamboeckSmartConfigurator();
         }
     });
 
