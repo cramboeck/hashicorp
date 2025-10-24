@@ -16,7 +16,7 @@ locals {
   sig_offer      = "avd"
   sig_sku        = "enterprise"
   sig_publisher  = "ramboeck"
-  sig_image_version = formatdate("2025.01.19",timestamp())
+  sig_image_version = formatdate("YYYY.MM.DD", timestamp())
 
   # Einheitliche Tags
   common_tags = {

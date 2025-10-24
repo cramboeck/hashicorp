@@ -1,5 +1,7 @@
-# Debug-Modus aktivieren, um Pausen und Cleanup steuern zu können
-$DebugMode = $false
+# Debug mode parameter - kann beim Aufruf überschrieben werden
+param(
+    [bool]$DebugMode = $false
+)
 
 New-Item -ItemType Directory -Path "C:\InstallLogs" -Force | Out-Null
 $log = "C:\InstallLogs\install-vdot.log"

@@ -1,0 +1,60 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+terraform.tfplan
+plan.out
+crash.log
+
+# Packer
+packer_cache/
+*.box
+packer-manifest.json
+terraform.auto.pkrvars.json
+
+# PowerShell
+*.ps1.log
+
+# Logs
+*.log
+logs/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Azure CLI
+.azure/
+
+# Secrets and credentials (extra safety)
+*.pem
+*.key
+*.pfx
+*.p12
+secrets/
+credentials/
+
+# Debug marker files
+packer-continue.txt
