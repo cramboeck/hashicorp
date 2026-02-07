@@ -15,6 +15,10 @@ resource "azurerm_shared_image" "this" {
   hyper_v_generation  = "V2"
   architecture        = "x64"
 
+  accelerated_network_support_enabled = true
+  hibernation_enabled                 = true
+  trusted_launch_enabled              = true
+
   identifier {
     publisher = var.publisher
     offer     = var.offer
