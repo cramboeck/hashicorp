@@ -9,6 +9,8 @@ resource "azurerm_virtual_desktop_host_pool" "this" {
   start_vm_on_connect = true
   validate_environment = false
   tags = var.tags
+  friendly_name            = var.friendly_name
+  custom_rdp_properties    = var.custom_rdp_properties
 
   scheduled_agent_updates {
     enabled = true
