@@ -47,15 +47,30 @@ source "azure-arm" "avd" {
   vtpm_enabled        = true
 
   # 🔌 Kommunikation via WinRM
-  # HINWEIS: WinRM über HTTP ist für temporäre Packer-Build-VMs akzeptabel,
-  # da diese VMs nur während des Builds existieren und in einem isolierten Netzwerk laufen.
-  # In Produktionsumgebungen sollte WinRM über HTTPS mit Zertifikaten konfiguriert werden.
+  # WinRM wird automatisch beim VM-Start konfiguriert (via custom_data)
   communicator      = "winrm"
   winrm_username    = "packer"
   winrm_password    = var.winrm_password
   winrm_use_ssl     = false
   winrm_insecure    = true
-  winrm_timeout     = "15m"
+  winrm_timeout     = "30m"
+
+  # Custom Data: Aktiviert WinRM beim ersten Boot
+  custom_data = <<-EOF
+    #ps1_sysnative
+    # Enable WinRM for Packer
+    winrm quickconfig -quiet -force
+    winrm set winrm/config/service/auth '@{Basic="true"}'
+    winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+    winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="2048"}'
+
+    # Firewall rules
+    netsh advfirewall firewall set rule name="Windows Remote Management (HTTP-In)" new action=allow
+    netsh advfirewall firewall add rule name="WinRM HTTP" dir=in action=allow protocol=TCP localport=5985
+
+    # Restart WinRM service
+    Restart-Service WinRM
+  EOF
 
   azure_tags = {
     CreatedBy = "Packer"
@@ -86,10 +101,8 @@ provisioner "powershell" {
     ]
   }
 
- provisioner "powershell" {
-    script = "scripts/Enable-WinRM.ps1"
-  }
-  
+  # Enable-WinRM.ps1 nicht mehr nötig - wird via custom_data beim Boot gemacht
+
   provisioner "file" {
     source      = "data/languages.json"
     destination = "C:/Install/languages.json"
