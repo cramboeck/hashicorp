@@ -49,3 +49,37 @@ variable "sig_rg_name" {
   description = "Resource Group, in der sich die Shared Image Gallery befindet"
 }
 
+# ============================================================================
+# Software Package URLs (with SAS Tokens)
+# ============================================================================
+# Diese URLs sollten regelmäßig aktualisiert werden (SAS Token Expiration!)
+# BEST PRACTICE: Verwenden Sie Azure Key Vault für automatische Token-Rotation
+
+variable "padt_greenshot_url" {
+  type        = string
+  description = "URL zu PADT-Greenshot.zip Package (inkl. SAS Token)"
+  sensitive   = true
+  default     = ""  # Wird aus terraform.auto.pkrvars.json oder Umgebungsvariablen gelesen
+}
+
+variable "padt_countryswitch_url" {
+  type        = string
+  description = "URL zu PADT-CountrySwitch.zip Package (inkl. SAS Token)"
+  sensitive   = true
+  default     = ""
+}
+
+variable "padt_microsoft365_url" {
+  type        = string
+  description = "URL zu PADT-Microsoft365.zip Package (inkl. SAS Token)"
+  sensitive   = true
+  default     = ""
+}
+
+variable "vdot_url" {
+  type        = string
+  description = "URL zu VDOT.zip Package (inkl. SAS Token)"
+  sensitive   = true
+  default     = ""
+}
+
