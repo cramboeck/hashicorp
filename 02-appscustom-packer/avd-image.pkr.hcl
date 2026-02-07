@@ -94,22 +94,23 @@ provisioner "powershell" {
 
 provisioner "powershell" {
   inline = [
-    # Download software archive from Blob (replace <SAS_URL> below)
-    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/PADT-Greenshot.zip?sp=r&st=2025-05-21T11:22:05Z&se=2025-05-29T19:22:05Z&spr=https&sv=2024-11-04&sr=b&sig=HfpGm%2Fk%2FLjDW9QuO%2FajcOFtdMf%2Bi7jSJtVk87KNkcUc%3D' 'c:\\install\\PADT-Greenshot.zip' --recursive",
+    # Download software archive from Blob
+    # URL mit SAS Token wird aus Variable gelesen (oder überspringen wenn leer)
+    "if ('${var.padt_greenshot_url}' -ne '') { c:\\install\\azcopy.exe copy '${var.padt_greenshot_url}' 'c:\\install\\PADT-Greenshot.zip' --recursive }",
     # Extract the downloaded archive
-    "Expand-Archive -Path 'c:\\install\\PADT-Greenshot.zip' -DestinationPath 'c:\\install' -Force",
-    "C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
+    "if (Test-Path 'c:\\install\\PADT-Greenshot.zip') { Expand-Archive -Path 'c:\\install\\PADT-Greenshot.zip' -DestinationPath 'c:\\install' -Force }",
+    "if (Test-Path 'C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1') { C:\\Install\\PADT-Greenshot\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent }"
   ]
 }
 
   #### //// INSTALLING CountrySwitch using  custom PADT Toolkit Package //// ####
 provisioner "powershell" {
   inline = [
-    # Download software archive from Blob (replace <SAS_URL> below)
-    "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/PADT-CountrySwitch.zip?sp=r&st=2025-05-21T11:56:15Z&se=2025-06-07T19:56:15Z&spr=https&sv=2024-11-04&sr=b&sig=1YiADYMqo327e%2B4ALULRnbnwghfWNIrK0SX2y%2FvZAyU%3D' 'c:\\install\\PADT-CountrySwitch.zip' --recursive",
+    # Download software archive from Blob
+    "if ('${var.padt_countryswitch_url}' -ne '') { c:\\install\\azcopy.exe copy '${var.padt_countryswitch_url}' 'c:\\install\\PADT-CountrySwitch.zip' --recursive }",
     # Extract the downloaded archive
-    "Expand-Archive -Path 'c:\\install\\PADT-CountrySwitch.zip' -DestinationPath 'c:\\install' -Force",
-    "C:\\Install\\PADT-CountrySwitch\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
+    "if (Test-Path 'c:\\install\\PADT-CountrySwitch.zip') { Expand-Archive -Path 'c:\\install\\PADT-CountrySwitch.zip' -DestinationPath 'c:\\install' -Force }",
+    "if (Test-Path 'C:\\Install\\PADT-CountrySwitch\\Invoke-AppDeployToolkit.ps1') { C:\\Install\\PADT-CountrySwitch\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent }"
   ]
 }
 
@@ -117,11 +118,11 @@ provisioner "powershell" {
 
 provisioner "powershell" {
   inline = [
-    # Download software archive from Blob (replace <SAS_URL> below)
-    "c:\\install\\azcopy.exe copy 'sp=r&st=2025-05-23T07:21:16Z&se=2025-06-07T15:21:16Z&spr=https&sv=2024-11-04&sr=b&sig=wKmzi1ySGarqvT1yaW6HMlH7nGtLkRqwMlZepzWakXI%3D' 'c:\\install\\PADT-Microsoft365.zip' --recursive",
+    # Download software archive from Blob
+    "if ('${var.padt_microsoft365_url}' -ne '') { c:\\install\\azcopy.exe copy '${var.padt_microsoft365_url}' 'c:\\install\\PADT-Microsoft365.zip' --recursive }",
     # Extract the downloaded archive
-    "Expand-Archive -Path 'c:\\install\\PADT-Microsoft365.zip' -DestinationPath 'c:\\install' -Force",
-    "c:\\install\\PADT-Microsoft365\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent"
+    "if (Test-Path 'c:\\install\\PADT-Microsoft365.zip') { Expand-Archive -Path 'c:\\install\\PADT-Microsoft365.zip' -DestinationPath 'c:\\install' -Force }",
+    "if (Test-Path 'c:\\install\\PADT-Microsoft365\\Invoke-AppDeployToolkit.ps1') { c:\\install\\PADT-Microsoft365\\Invoke-AppDeployToolkit.ps1 -DeployMode Silent }"
   ]
 }
 
@@ -133,10 +134,10 @@ provisioner "powershell" {
   #### //// Download and installation for VDOT  //// ####
   provisioner "powershell" {
     inline = [
-      # Download software archive from Blob (replace <SAS_URL> below)
-      "c:\\install\\azcopy.exe copy 'https://ramboeckit.blob.core.windows.net/azureimagebuilder/VDOT.zip?sp=r&st=2025-05-21T14:21:19Z&se=2025-06-06T22:21:19Z&spr=https&sv=2024-11-04&sr=b&sig=%2B6R7lzU%2BIqTS%2FH9TsNONuSVz7WPKJO3h3hfiR9rIrIU%3D' 'c:\\install\\VDOT.zip' --recursive",
+      # Download software archive from Blob
+      "if ('${var.vdot_url}' -ne '') { c:\\install\\azcopy.exe copy '${var.vdot_url}' 'c:\\install\\VDOT.zip' --recursive }",
       # Extract the downloaded archive
-      "Expand-Archive -Path 'c:\\install\\VDOT.zip' -DestinationPath 'c:\\install' -Force",
+      "if (Test-Path 'c:\\install\\VDOT.zip') { Expand-Archive -Path 'c:\\install\\VDOT.zip' -DestinationPath 'c:\\install' -Force }",
       "C:\\Install\\VDOT\\Windows_VDOT.ps1 -AcceptEula -Optimizations All"
     ]
   }
