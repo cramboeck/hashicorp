@@ -22,10 +22,10 @@ source "azure-arm" "avd" {
   shared_image_gallery {
     subscription = var.subscription_id
     resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"  
+    gallery_name = "avd_sig"
     image_name = var.sig_image_name
-    storage_account_type = "Standard_LRS" 
-    image_version = "1.0.1"
+    storage_account_type = "Standard_LRS"
+    image_version = "latest"  # Nutzt automatisch die neueste verfügbare Version aus SIG
         target_region {
       name = "westeurope"
     }
@@ -34,10 +34,10 @@ source "azure-arm" "avd" {
   shared_image_gallery_destination {
     subscription = var.subscription_id
     resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"  
+    gallery_name = "avd_sig"
     image_name = var.sig_image_name
-    storage_account_type = "Standard_LRS" 
-    image_version = "2025-05-22"
+    storage_account_type = "Standard_LRS"
+    image_version = var.sig_image_version  # Wird automatisch von Terraform generiert (Format: YYYY.MM.DD)
         target_region {
       name = "westeurope"
     }

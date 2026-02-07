@@ -33,10 +33,10 @@ source "azure-arm" "avd" {
     }
   }
 
-  # 📦 Basisimage (Marketplace)
+  # 📦 Basisimage (Marketplace) - Windows 11 25H2 Multisession mit Office 365
   image_publisher = "MicrosoftWindowsDesktop"
   image_offer     = "office-365"
-  image_sku       = "win11-24h2-avd-m365"
+  image_sku       = "win11-25h2-avd-m365"  # Windows 11 25H2 Multisession + Office
   image_version   = "latest"
   os_type         = "Windows"
   vm_size         = "Standard_D2s_v4"
