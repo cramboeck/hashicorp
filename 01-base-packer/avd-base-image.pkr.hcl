@@ -6,14 +6,17 @@ packer {
     }
   }
 }
+
 source "azure-arm" "avd" {
   client_id       = var.client_id
   client_secret   = var.client_secret
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
 
-  #location = var.location
+  # Location MUSS gesetzt sein!
+  location = "westeurope"
 
+  # Temporäre Resource Group für Build
   build_resource_group_name = "packer-temp-rg"
 
   temp_compute_name = "pkr-base-vm"
@@ -39,7 +42,7 @@ source "azure-arm" "avd" {
   image_sku       = "win11-25h2-avd-m365"  # Windows 11 25H2 Multisession + Office
   image_version   = "latest"
   os_type         = "Windows"
-  vm_size         = "Standard_D2s_v4"
+  vm_size         = "Standard_D4s_v5"  # Größere VM für schnelleren Build
 
   # 🔐 Sicherheitsoptionen: Trusted Launch
   security_type       = "TrustedLaunch"
@@ -47,7 +50,7 @@ source "azure-arm" "avd" {
   vtpm_enabled        = true
 
   # 🔌 Kommunikation via WinRM
-  # WinRM wird automatisch beim VM-Start konfiguriert (via custom_data)
+  # WinRM muss beim VM-Boot aktiviert werden!
   communicator      = "winrm"
   winrm_username    = "packer"
   winrm_password    = var.winrm_password
@@ -55,54 +58,52 @@ source "azure-arm" "avd" {
   winrm_insecure    = true
   winrm_timeout     = "30m"
 
-  # Custom Data: Aktiviert WinRM beim ersten Boot
-  custom_data = <<-EOF
-    #ps1_sysnative
-    # Enable WinRM for Packer
-    winrm quickconfig -quiet -force
-    winrm set winrm/config/service/auth '@{Basic="true"}'
-    winrm set winrm/config/service '@{AllowUnencrypted="true"}'
-    winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="2048"}'
+  # ⚡ KRITISCH: WinRM beim Boot aktivieren via user_data
+  # Azure führt <powershell>-Block beim ersten Boot aus
+  user_data = <<EOF
+<powershell>
+# WinRM schnell aktivieren
+winrm quickconfig -quiet -force
 
-    # Firewall rules
-    netsh advfirewall firewall set rule name="Windows Remote Management (HTTP-In)" new action=allow
-    netsh advfirewall firewall add rule name="WinRM HTTP" dir=in action=allow protocol=TCP localport=5985
+# Basic Auth + Unencrypted für Packer erlauben
+winrm set winrm/config/service/auth '@{Basic="true"}'
+winrm set winrm/config/service '@{AllowUnencrypted="true"}'
 
-    # Restart WinRM service
-    Restart-Service WinRM
-  EOF
+# Firewall-Regel für WinRM HTTP (Port 5985)
+netsh advfirewall firewall add rule name="WinRM HTTP" dir=in action=allow protocol=TCP localport=5985
+
+# Dienst automatisch starten
+Set-Service WinRM -StartupType Automatic
+Restart-Service WinRM
+
+Write-Host "WinRM aktiviert und bereit für Packer"
+</powershell>
+EOF
 
   azure_tags = {
     CreatedBy = "Packer"
     Project   = "AVD"
+    BuildType = "base-image"
   }
 }
 
 build {
   sources = ["source.azure-arm.avd"]
 
-  #### //// INSTALLING AZCOPY to C:\install //// ####
-
-provisioner "powershell" {
-  inline = [
-    # Create folder structure
-    "New-Item -Path 'c:\\install' -ItemType Directory -Force | Out-Null",
-
-    # Download AzCopy
-    "Invoke-WebRequest -Uri 'https://aka.ms/downloadazcopy-v10-windows' -OutFile 'c:\\install\\azcopy.zip'",
-
-    # Extract AzCopy archive
-    "Expand-Archive -Path 'c:\\install\\azcopy.zip' -DestinationPath 'c:\\install' -Force",
-
-    # Move azcopy.exe to final path
-    "$azPath = Get-ChildItem -Path 'c:\\install\\azcopy_windows_amd64*\\azcopy.exe' -Recurse -ErrorAction Stop | Select-Object -ExpandProperty FullName",
-    "Copy-Item -Path $azPath -Destination 'c:\\install\\azcopy.exe' -Force",
-
+  #### Schritt 1: AzCopy installieren ####
+  provisioner "powershell" {
+    inline = [
+      "Write-Host 'Installing AzCopy...'",
+      "New-Item -Path 'c:\\install' -ItemType Directory -Force | Out-Null",
+      "Invoke-WebRequest -Uri 'https://aka.ms/downloadazcopy-v10-windows' -OutFile 'c:\\install\\azcopy.zip' -UseBasicParsing",
+      "Expand-Archive -Path 'c:\\install\\azcopy.zip' -DestinationPath 'c:\\install' -Force",
+      "$azPath = Get-ChildItem -Path 'c:\\install\\azcopy_windows_amd64*\\azcopy.exe' -Recurse -ErrorAction Stop | Select-Object -ExpandProperty FullName",
+      "Copy-Item -Path $azPath -Destination 'c:\\install\\azcopy.exe' -Force",
+      "Write-Host 'AzCopy installed successfully'"
     ]
   }
 
-  # Enable-WinRM.ps1 nicht mehr nötig - wird via custom_data beim Boot gemacht
-
+  #### Schritt 2: Language Packs installieren ####
   provisioner "file" {
     source      = "data/languages.json"
     destination = "C:/Install/languages.json"
@@ -112,12 +113,16 @@ provisioner "powershell" {
     script = "scripts/install-languages.ps1"
   }
 
-  provisioner "windows-restart" {}
+  #### Schritt 3: Reboot nach Language Packs ####
+  provisioner "windows-restart" {
+    restart_timeout = "15m"
+  }
 
+  #### Schritt 4: Sysprep für Image-Erstellung ####
   provisioner "powershell" {
     inline = [
-      "Write-Host '[FINISHING] Starte Sysprep...'",
-      "C:\\Windows\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /shutdown /quiet /mode:vm"
+      "Write-Host 'Starting Sysprep...'",
+      "& C:\\Windows\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /shutdown /quiet /mode:vm"
     ]
   }
 }
