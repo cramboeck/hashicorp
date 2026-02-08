@@ -287,11 +287,13 @@ function New-AVDSessionHostVM {
             -Location $Location `
             -SubnetId $SubnetId
 
-        # VM Konfiguration
-        $vmConfig = New-AzVMConfig -VMName $VMName -VMSize $VMSize `
+        # VM Konfiguration mit Trusted Launch (erforderlich für SIG Images mit trusted_launch_enabled)
+        $vmConfig = New-AzVMConfig -VMName $VMName -VMSize $VMSize -SecurityType "TrustedLaunch" `
             | Set-AzVMOperatingSystem -Windows -ComputerName $VMName -Credential $AdminCredential `
             | Set-AzVMSourceImage -Id $ImageId `
             | Add-AzVMNetworkInterface -Id $nic.Id
+        Set-AzVMSecurityProfile -VM $vmConfig -SecurityType "TrustedLaunch"
+        Set-AzVMUefi -VM $vmConfig -EnableSecureBoot $true -EnableVtpm $true
 
         # VM erstellen
         $vm = New-AzVM -ResourceGroupName $ResourceGroupName `
