@@ -15,10 +15,7 @@ source "azure-arm" "avd" {
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
 
-  # Location MUSS gesetzt sein!
-  location = "westeurope"
-
-  # Temporäre Resource Group für Build
+  # Existierende Resource Group für Build (Location wird daraus abgeleitet)
   build_resource_group_name = "packer-temp-rg"
 
   # Source Image aus SIG (Ergebnis von Stage 1: base-packer)
