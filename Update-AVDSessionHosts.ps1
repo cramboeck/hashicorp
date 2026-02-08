@@ -411,10 +411,10 @@ try {
 
     Write-Log "Gefundene Session Hosts: $($sessionHosts.Count)" -Level INFO
 
-    foreach ($host in $sessionHosts) {
-        $hostName = $host.Name.Split('/')[-1]
+    foreach ($sessionHost in $sessionHosts) {
+        $hostName = $sessionHost.Name.Split('/')[-1]
         $sessions = Get-AVDSessionHostSessions -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName -SessionHostName $hostName
-        Write-Log "  - $hostName : Status=$($host.Status), Sessions=$($sessions.Count), AllowNewSession=$($host.AllowNewSession)" -Level INFO
+        Write-Log "  - $hostName : Status=$($sessionHost.Status), Sessions=$($sessions.Count), AllowNewSession=$($sessionHost.AllowNewSession)" -Level INFO
     }
 
     # Image-Version ermitteln
@@ -600,9 +600,9 @@ try {
     Write-Log "Aktuelle Session Hosts nach Update:" -Level INFO
     $updatedHosts = Get-AzWvdSessionHost -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName
 
-    foreach ($host in $updatedHosts) {
-        $hostName = $host.Name.Split('/')[-1]
-        Write-Log "  - $hostName : Status=$($host.Status), AllowNewSession=$($host.AllowNewSession)" -Level INFO
+    foreach ($sessionHost in $updatedHosts) {
+        $hostName = $sessionHost.Name.Split('/')[-1]
+        Write-Log "  - $hostName : Status=$($sessionHost.Status), AllowNewSession=$($sessionHost.AllowNewSession)" -Level INFO
     }
 }
 catch {
