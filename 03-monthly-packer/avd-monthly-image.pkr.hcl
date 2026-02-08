@@ -44,7 +44,7 @@ source "azure-arm" "avd" {
 
   # Windows OS & VM Size
   os_type  = "Windows"
-  vm_size  = "Standard_D4s_v5"
+  vm_size  = "Standard_D4s_v3"
 
   # Sicherheitsoptionen: Trusted Launch (MUSS mit SIG Image Definition übereinstimmen!)
   security_type       = "TrustedLaunch"

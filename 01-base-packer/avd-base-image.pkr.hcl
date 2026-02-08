@@ -42,7 +42,7 @@ source "azure-arm" "avd" {
   image_sku       = "win11-25h2-avd-m365"  # Windows 11 25H2 Multisession + Office
   image_version   = "latest"
   os_type         = "Windows"
-  vm_size         = "Standard_D4s_v5"  # Größere VM für schnelleren Build
+  vm_size         = "Standard_D4s_v3"  # DSv3 (Quota verfügbar in westeurope)
 
   # 🔐 Sicherheitsoptionen: Trusted Launch
   security_type       = "TrustedLaunch"
