@@ -7,11 +7,13 @@
 
 .DESCRIPTION
     Führt ein Rolling Update der AVD Session Hosts mit neuem Image aus der Shared Image Gallery durch.
-    - Drain Mode für alte Hosts (keine neuen Sessions)
-    - Wartet bis alle Sessions beendet sind
-    - Erstellt neue Hosts mit neuem Image
-    - Entfernt alte Hosts
-    - Optional: Blue/Green Deployment
+    Wenn keine Session Hosts vorhanden sind, wird automatisch ein Initial Deployment durchgeführt.
+
+    Funktionen:
+    - Initial Deployment: Erstellt neue Session Hosts wenn keine vorhanden sind
+    - Rolling Update: Drain Mode, Session-Beendigung abwarten, Host ersetzen
+    - Blue/Green Deployment: Neuen Host erstellen, dann alten entfernen
+    - DryRun Modus: Simulation ohne Änderungen
 
 .PARAMETER ResourceGroupName
     Name der Resource Group mit dem AVD Host Pool
@@ -35,11 +37,33 @@
 .PARAMETER DryRun
     Simulation ohne tatsächliche Änderungen
 
+.PARAMETER InitialHostCount
+    Anzahl der Session Hosts bei Initial Deployment (default: 1)
+
+.PARAMETER VMSize
+    VM-Größe für neue Session Hosts (default: Standard_D4s_v5)
+
+.PARAMETER SessionHostPrefix
+    Namens-Präfix für neue Session Hosts (default: avd-host)
+
+.PARAMETER SubnetId
+    Vollständige Subnet Resource ID. Wenn nicht angegeben, wird automatisch ein VNet gesucht.
+
+.PARAMETER VNetName
+    Name des VNets (optional, wird mit SubnetName kombiniert)
+
+.PARAMETER SubnetName
+    Name des Subnets im VNet (default: default)
+
 .EXAMPLE
     .\Update-AVDSessionHosts.ps1 -ResourceGroupName "avd-rg" -HostPoolName "hp-prod" -ImageVersion "2025.02.15"
 
 .EXAMPLE
     .\Update-AVDSessionHosts.ps1 -ResourceGroupName "avd-rg" -HostPoolName "hp-prod" -UpdateStrategy "BlueGreen" -DryRun
+
+.EXAMPLE
+    # Initial Deployment - 2 neue Session Hosts erstellen wenn keine vorhanden
+    .\Update-AVDSessionHosts.ps1 -ResourceGroupName "avd-rg" -HostPoolName "hp-prod" -InitialHostCount 2 -VMSize "Standard_D4s_v5"
 
 .NOTES
     Author: Christoph Ramböck
@@ -72,7 +96,25 @@ param(
     [switch]$DryRun,
 
     [Parameter(Mandatory = $false)]
-    [switch]$Force
+    [switch]$Force,
+
+    [Parameter(Mandatory = $false)]
+    [int]$InitialHostCount = 1,
+
+    [Parameter(Mandatory = $false)]
+    [string]$VMSize = "Standard_D4s_v5",
+
+    [Parameter(Mandatory = $false)]
+    [string]$SessionHostPrefix = "avd-host",
+
+    [Parameter(Mandatory = $false)]
+    [string]$SubnetId = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$VNetName = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$SubnetName = "default"
 )
 
 #region Functions
@@ -405,16 +447,19 @@ try {
     Write-Log "Rufe Session Hosts ab..." -Level INFO
     $sessionHosts = Get-AzWvdSessionHost -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName
 
-    if (-not $sessionHosts -or $sessionHosts.Count -eq 0) {
-        throw "Keine Session Hosts gefunden im Host Pool $HostPoolName"
-    }
+    $isInitialDeployment = (-not $sessionHosts -or $sessionHosts.Count -eq 0)
 
-    Write-Log "Gefundene Session Hosts: $($sessionHosts.Count)" -Level INFO
+    if ($isInitialDeployment) {
+        Write-Log "Keine Session Hosts gefunden im Host Pool $HostPoolName" -Level WARNING
+        Write-Log "Starte Initial Deployment: $InitialHostCount neue Session Host(s) werden erstellt" -Level INFO
+    } else {
+        Write-Log "Gefundene Session Hosts: $($sessionHosts.Count)" -Level INFO
 
-    foreach ($sessionHost in $sessionHosts) {
-        $hostName = $sessionHost.Name.Split('/')[-1]
-        $sessions = Get-AVDSessionHostSessions -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName -SessionHostName $hostName
-        Write-Log "  - $hostName : Status=$($sessionHost.Status), Sessions=$($sessions.Count), AllowNewSession=$($sessionHost.AllowNewSession)" -Level INFO
+        foreach ($sessionHost in $sessionHosts) {
+            $hostName = $sessionHost.Name.Split('/')[-1]
+            $sessions = Get-AVDSessionHostSessions -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName -SessionHostName $hostName
+            Write-Log "  - $hostName : Status=$($sessionHost.Status), Sessions=$($sessions.Count), AllowNewSession=$($sessionHost.AllowNewSession)" -Level INFO
+        }
     }
 
     # Image-Version ermitteln
@@ -443,7 +488,126 @@ try {
 
     Write-Log "Image ID: $imageId" -Level INFO
 
-    # Rolling Update durchführen
+    # ===== Initial Deployment (wenn keine Session Hosts vorhanden) =====
+    if ($isInitialDeployment) {
+        Write-Log "===== Initial Deployment startet =====" -Level INFO
+
+        # Netzwerk-Konfiguration ermitteln
+        if (-not $SubnetId) {
+            if ($VNetName) {
+                Write-Log "Ermittle Subnet ID aus VNet '$VNetName', Subnet '$SubnetName'..." -Level INFO
+                $vnet = Get-AzVirtualNetwork -ResourceGroupName $ResourceGroupName -Name $VNetName -ErrorAction SilentlyContinue
+                if ($vnet) {
+                    $subnet = $vnet.Subnets | Where-Object { $_.Name -eq $SubnetName }
+                    if ($subnet) {
+                        $SubnetId = $subnet.Id
+                    }
+                }
+            }
+
+            # Fallback: VNet in der Resource Group suchen
+            if (-not $SubnetId) {
+                Write-Log "Suche VNet in Resource Group $ResourceGroupName..." -Level INFO
+                $vnets = Get-AzVirtualNetwork -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue
+                if ($vnets) {
+                    $vnet = $vnets | Select-Object -First 1
+                    $subnet = $vnet.Subnets | Select-Object -First 1
+                    $SubnetId = $subnet.Id
+                    Write-Log "Verwende VNet '$($vnet.Name)', Subnet '$($subnet.Name)'" -Level INFO
+                } else {
+                    throw "Kein VNet gefunden in Resource Group $ResourceGroupName. Bitte VNetName oder SubnetId angeben."
+                }
+            }
+        }
+
+        Write-Log "Subnet ID: $SubnetId" -Level INFO
+
+        $location = $hostPool.Location
+        Write-Log "Location: $location" -Level INFO
+
+        # Admin Credentials
+        Write-Log "Admin Credentials werden benötigt für neue VM(s)..." -Level WARNING
+        Write-Log "In Produktion: Verwenden Sie Azure Key Vault!" -Level WARNING
+
+        if (-not $DryRun) {
+            $adminUser = "azureadmin"
+            $adminPassword = Read-Host "Passwort für Admin-Account" -AsSecureString
+            $adminCredential = New-Object System.Management.Automation.PSCredential ($adminUser, $adminPassword)
+        }
+
+        # Registration Token generieren
+        if (-not $DryRun) {
+            $tokenExpiration = (Get-Date).AddHours(4)
+            $registrationInfo = New-AzWvdRegistrationInfo -ResourceGroupName $ResourceGroupName `
+                -HostPoolName $HostPoolName `
+                -ExpirationTime $tokenExpiration
+            $registrationToken = $registrationInfo.Token
+            Write-Log "Registration Token generiert (gültig bis $tokenExpiration)" -Level SUCCESS
+        }
+
+        for ($i = 1; $i -le $InitialHostCount; $i++) {
+            $newVMName = "$SessionHostPrefix-$('{0:D2}' -f $i)"
+            Write-Log "===== Erstelle Session Host $i/$InitialHostCount : $newVMName =====" -Level INFO
+
+            if ($DryRun) {
+                Write-Log "[DRY RUN] Würde VM '$newVMName' erstellen (Size: $VMSize, Image: $imageId)" -Level INFO
+                Write-Log "[DRY RUN] Würde VM '$newVMName' im Host Pool registrieren" -Level INFO
+                continue
+            }
+
+            # VM erstellen
+            $vmCreated = New-AVDSessionHostVM -ResourceGroupName $ResourceGroupName `
+                -Location $location `
+                -VMName $newVMName `
+                -ImageId $imageId `
+                -SubnetId $SubnetId `
+                -VMSize $VMSize `
+                -AdminCredential $adminCredential
+
+            if (-not $vmCreated) {
+                Write-Log "VM-Erstellung für $newVMName fehlgeschlagen!" -Level ERROR
+                continue
+            }
+
+            # Session Host registrieren
+            $registered = Register-AVDSessionHost -ResourceGroupName $ResourceGroupName `
+                -HostPoolName $HostPoolName `
+                -VMName $newVMName `
+                -RegistrationToken $registrationToken
+
+            if ($registered) {
+                Write-Log "Session Host $newVMName erfolgreich erstellt und registriert" -Level SUCCESS
+            } else {
+                Write-Log "Registrierung von $newVMName fehlgeschlagen" -Level ERROR
+            }
+
+            # Kurze Pause zwischen Hosts
+            if ($i -lt $InitialHostCount) {
+                Write-Log "Warte 30 Sekunden vor nächstem Host..." -Level INFO
+                Start-Sleep -Seconds 30
+            }
+        }
+
+        Write-Log "===== Initial Deployment abgeschlossen =====" -Level SUCCESS
+
+        # Finale Session Host Liste anzeigen
+        Write-Log "Aktuelle Session Hosts nach Initial Deployment:" -Level INFO
+        $updatedHosts = Get-AzWvdSessionHost -ResourceGroupName $ResourceGroupName -HostPoolName $HostPoolName
+
+        if ($updatedHosts) {
+            foreach ($sessionHost in $updatedHosts) {
+                $hostName = $sessionHost.Name.Split('/')[-1]
+                Write-Log "  - $hostName : Status=$($sessionHost.Status), AllowNewSession=$($sessionHost.AllowNewSession)" -Level INFO
+            }
+        } else {
+            Write-Log "  (Hosts werden noch registriert, bitte warten und erneut prüfen)" -Level WARNING
+        }
+
+        # Script beenden - kein Rolling Update nötig
+        return
+    }
+
+    # ===== Rolling Update (wenn Session Hosts vorhanden) =====
     Write-Log "Starte Rolling Update..." -Level INFO
 
     $totalHosts = $sessionHosts.Count

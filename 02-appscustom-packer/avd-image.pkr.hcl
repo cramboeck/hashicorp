@@ -15,43 +15,43 @@ source "azure-arm" "avd" {
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
 
-  #location                           = var.location
-  build_resource_group_name          = "packer-temp-rg"
- 
+  # Location MUSS gesetzt sein!
+  location = "westeurope"
 
-  # Source Image definition 
-  #image_publisher = "MicrosoftWindowsDesktop"
-  #image_offer     = "office-365"
-  #image_sku       = "win11-24h2-avd-m365"
-  #image_version   = "latest"
-  #managed_image_resource_group_name = var.sig_rg_name
-  #managed_image_name                = var.sig_image_name
+  # Temporäre Resource Group für Build
+  build_resource_group_name = "packer-temp-rg"
 
+  # Source Image aus SIG (Ergebnis von Stage 1: base-packer)
   shared_image_gallery {
-    subscription = var.subscription_id
+    subscription   = var.subscription_id
     resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"
-    image_name = var.sig_image_name
-    image_version = var.sig_image_version
-}
+    gallery_name   = "avd_sig"
+    image_name     = var.sig_image_name
+    image_version  = "latest"
+  }
 
+  # Ziel: Zurück in die SIG mit neuer Version
+  shared_image_gallery_destination {
+    subscription         = var.subscription_id
+    resource_group       = var.sig_rg_name
+    gallery_name         = "avd_sig"
+    image_name           = var.sig_image_name
+    storage_account_type = "Standard_LRS"
+    image_version        = var.sig_image_version
 
-# Image Galley Destination definition
-    shared_image_gallery_destination {
-    subscription = var.subscription_id
-    resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"  
-    image_name = var.sig_image_name
-    storage_account_type = "Standard_LRS" 
-    image_version = "2025.05.24"
-        target_region {
+    target_region {
       name = "westeurope"
     }
   }
 
-  # windows os & vm size 
-  os_type         = "Windows"
-  vm_size         = "Standard_D2s_v4"
+  # Windows OS & VM Size
+  os_type  = "Windows"
+  vm_size  = "Standard_D4s_v5"
+
+  # Sicherheitsoptionen: Trusted Launch (MUSS mit SIG Image Definition übereinstimmen!)
+  security_type       = "TrustedLaunch"
+  secure_boot_enabled = true
+  vtpm_enabled        = true
 
   # Communicator
   communicator      = "winrm"

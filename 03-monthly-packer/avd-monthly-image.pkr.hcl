@@ -13,35 +13,43 @@ source "azure-arm" "avd" {
   tenant_id       = var.tenant_id
   subscription_id = var.subscription_id
 
-  #location                           = var.location
-  build_resource_group_name          = "packer-temp-rg"
-  managed_image_resource_group_name = var.sig_rg_name
-  managed_image_name                = var.sig_image_name
+  # Location MUSS gesetzt sein!
+  location = "westeurope"
 
-  # Basisimage - existing Image from SIG for monthly update and versioning
+  # Temporäre Resource Group für Build
+  build_resource_group_name = "packer-temp-rg"
+
+  # Source Image aus SIG (neueste Version für monatliches Update)
   shared_image_gallery {
-    subscription = var.subscription_id
+    subscription   = var.subscription_id
     resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"
-    image_name = var.sig_image_name
+    gallery_name   = "avd_sig"
+    image_name     = var.sig_image_name
+    image_version  = "latest"
+  }
+
+  # Ziel: Zurück in die SIG mit neuer Version
+  shared_image_gallery_destination {
+    subscription         = var.subscription_id
+    resource_group       = var.sig_rg_name
+    gallery_name         = "avd_sig"
+    image_name           = var.sig_image_name
     storage_account_type = "Standard_LRS"
-    image_version = "latest"  # Nutzt automatisch die neueste verfügbare Version aus SIG
-        target_region {
+    image_version        = var.sig_image_version
+
+    target_region {
       name = "westeurope"
     }
   }
 
-  shared_image_gallery_destination {
-    subscription = var.subscription_id
-    resource_group = var.sig_rg_name
-    gallery_name = "avd_sig"
-    image_name = var.sig_image_name
-    storage_account_type = "Standard_LRS"
-    image_version = var.sig_image_version  # Wird automatisch von Terraform generiert (Format: YYYY.MM.DD)
-        target_region {
-      name = "westeurope"
-    }
-  }
+  # Windows OS & VM Size
+  os_type  = "Windows"
+  vm_size  = "Standard_D4s_v5"
+
+  # Sicherheitsoptionen: Trusted Launch (MUSS mit SIG Image Definition übereinstimmen!)
+  security_type       = "TrustedLaunch"
+  secure_boot_enabled = true
+  vtpm_enabled        = true
 
   # Communicator
   communicator      = "winrm"
