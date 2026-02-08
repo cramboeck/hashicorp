@@ -58,28 +58,6 @@ source "azure-arm" "avd" {
   winrm_insecure    = true
   winrm_timeout     = "30m"
 
-  # ⚡ KRITISCH: WinRM beim Boot aktivieren via user_data
-  # Azure führt <powershell>-Block beim ersten Boot aus
-  user_data = <<EOF
-<powershell>
-# WinRM schnell aktivieren
-winrm quickconfig -quiet -force
-
-# Basic Auth + Unencrypted für Packer erlauben
-winrm set winrm/config/service/auth '@{Basic="true"}'
-winrm set winrm/config/service '@{AllowUnencrypted="true"}'
-
-# Firewall-Regel für WinRM HTTP (Port 5985)
-netsh advfirewall firewall add rule name="WinRM HTTP" dir=in action=allow protocol=TCP localport=5985
-
-# Dienst automatisch starten
-Set-Service WinRM -StartupType Automatic
-Restart-Service WinRM
-
-Write-Host "WinRM aktiviert und bereit für Packer"
-</powershell>
-EOF
-
   azure_tags = {
     CreatedBy = "Packer"
     Project   = "AVD"
