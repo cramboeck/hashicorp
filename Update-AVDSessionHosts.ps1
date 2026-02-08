@@ -330,8 +330,11 @@ function Register-AVDSessionHost {
             return $true
         }
 
-        # AVD Agent Installation via Run Command
-        $scriptContent = @"
+        $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
+
+        # Schritt 1: AVD Agent herunterladen und installieren via Run Command
+        Write-Log "Installiere AVD Agent auf $VMName..." -Level INFO
+        $installScript = @"
 New-Item -Path 'C:\Temp' -ItemType Directory -Force | Out-Null
 
 `$BootstrapperUrl = 'https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrmXv'
@@ -343,21 +346,61 @@ Invoke-WebRequest -Uri `$AgentUrl -OutFile 'C:\Temp\AVDAgent.msi' -UseBasicParsi
 
 # Bootstrapper installieren
 Start-Process msiexec.exe -ArgumentList '/i C:\Temp\AVDBootstrapper.msi /quiet /norestart' -Wait
+Write-Host 'Bootstrapper installiert'
 
-# Agent mit Registration Token installieren
-Start-Process msiexec.exe -ArgumentList '/i C:\Temp\AVDAgent.msi /quiet /norestart REGISTRATIONTOKEN=$RegistrationToken' -Wait
-
-Write-Host 'AVD Agent Installation abgeschlossen'
+# Agent installieren (ohne Token - wird danach via Registry gesetzt)
+Start-Process msiexec.exe -ArgumentList '/i C:\Temp\AVDAgent.msi /quiet /norestart' -Wait
+Write-Host 'Agent installiert'
 "@
-
-        $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
 
         Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName `
             -VMName $VMName `
             -CommandId 'RunPowerShellScript' `
-            -ScriptString $scriptContent | Out-Null
+            -ScriptString $installScript | Out-Null
 
-        Write-Log "Session Host $VMName erfolgreich registriert" -Level SUCCESS
+        Write-Log "AVD Agent installiert" -Level SUCCESS
+
+        # Schritt 2: Registration Token via Registry setzen und Agent neu starten
+        Write-Log "Setze Registration Token und starte Agent neu..." -Level INFO
+        $registerScript = @"
+`$regPath = 'HKLM:\SOFTWARE\Microsoft\RDInfraAgent'
+if (Test-Path `$regPath) {
+    Set-ItemProperty -Path `$regPath -Name 'RegistrationToken' -Value '$RegistrationToken'
+    Set-ItemProperty -Path `$regPath -Name 'IsRegistered' -Value 0
+    Restart-Service RDAgentBootLoader -Force
+    Start-Sleep -Seconds 5
+    `$isReg = (Get-ItemProperty -Path `$regPath).IsRegistered
+    Write-Host "Registration gestartet, IsRegistered: `$isReg"
+} else {
+    Write-Host 'FEHLER: RDInfraAgent Registry Key nicht gefunden'
+    exit 1
+}
+"@
+
+        Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName `
+            -VMName $VMName `
+            -CommandId 'RunPowerShellScript' `
+            -ScriptString $registerScript | Out-Null
+
+        Write-Log "Registration Token gesetzt" -Level SUCCESS
+
+        # Schritt 3: Entra ID Join (AADLoginForWindows Extension)
+        Write-Log "Führe Microsoft Entra ID Join für $VMName durch..." -Level INFO
+        Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
+            -VMName $VMName `
+            -Name "AADLoginForWindows" `
+            -Publisher "Microsoft.Azure.ActiveDirectory" `
+            -ExtensionType "AADLoginForWindows" `
+            -TypeHandlerVersion "2.0" `
+            -Location $vm.Location | Out-Null
+
+        Write-Log "Entra ID Join Extension installiert" -Level SUCCESS
+
+        # Schritt 4: VM neustarten für Domain Join
+        Write-Log "Starte $VMName neu für Domain Join..." -Level INFO
+        Restart-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName | Out-Null
+
+        Write-Log "Session Host $VMName erfolgreich registriert und Entra ID joined" -Level SUCCESS
         return $true
     }
     catch {
