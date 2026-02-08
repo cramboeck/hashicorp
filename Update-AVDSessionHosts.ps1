@@ -332,7 +332,37 @@ function Register-AVDSessionHost {
 
         $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
 
-        # Schritt 1: AVD Agent herunterladen und installieren via Run Command
+        # Schritt 1: System-assigned Managed Identity sicherstellen (benötigt für Entra ID Join)
+        Write-Log "Stelle sicher, dass Managed Identity aktiviert ist..." -Level INFO
+        if (-not $vm.Identity -or $vm.Identity.Type -notmatch 'SystemAssigned') {
+            Write-Log "Aktiviere System-assigned Managed Identity für $VMName..." -Level INFO
+            Update-AzVM -ResourceGroupName $ResourceGroupName -VM $vm -IdentityType SystemAssigned | Out-Null
+            Write-Log "Managed Identity aktiviert" -Level SUCCESS
+            # VM-Objekt neu laden
+            $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
+        } else {
+            Write-Log "Managed Identity bereits aktiviert" -Level INFO
+        }
+
+        # Schritt 2: Entra ID Join (AADLoginForWindows Extension) - VOR Agent Installation
+        Write-Log "Führe Microsoft Entra ID Join für $VMName durch..." -Level INFO
+        Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
+            -VMName $VMName `
+            -Name "AADLoginForWindows" `
+            -Publisher "Microsoft.Azure.ActiveDirectory" `
+            -ExtensionType "AADLoginForWindows" `
+            -TypeHandlerVersion "2.0" `
+            -Location $vm.Location | Out-Null
+
+        Write-Log "Entra ID Join Extension installiert" -Level SUCCESS
+
+        # Schritt 3: VM neustarten damit Entra ID Join wirksam wird
+        Write-Log "Starte $VMName neu für Entra ID Join..." -Level INFO
+        Restart-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName | Out-Null
+        Write-Log "VM neugestartet, warte 30 Sekunden..." -Level INFO
+        Start-Sleep -Seconds 30
+
+        # Schritt 4: AVD Agent herunterladen und installieren via Run Command
         Write-Log "Installiere AVD Agent auf $VMName..." -Level INFO
         $installScript = @"
 New-Item -Path 'C:\Temp' -ItemType Directory -Force | Out-Null
@@ -360,7 +390,7 @@ Write-Host 'Agent installiert'
 
         Write-Log "AVD Agent installiert" -Level SUCCESS
 
-        # Schritt 2: Registration Token via Registry setzen und Agent neu starten
+        # Schritt 5: Registration Token via Registry setzen und Agent neu starten
         Write-Log "Setze Registration Token und starte Agent neu..." -Level INFO
         $registerScript = @"
 `$regPath = 'HKLM:\SOFTWARE\Microsoft\RDInfraAgent'
@@ -383,22 +413,6 @@ if (Test-Path `$regPath) {
             -ScriptString $registerScript | Out-Null
 
         Write-Log "Registration Token gesetzt" -Level SUCCESS
-
-        # Schritt 3: Entra ID Join (AADLoginForWindows Extension)
-        Write-Log "Führe Microsoft Entra ID Join für $VMName durch..." -Level INFO
-        Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
-            -VMName $VMName `
-            -Name "AADLoginForWindows" `
-            -Publisher "Microsoft.Azure.ActiveDirectory" `
-            -ExtensionType "AADLoginForWindows" `
-            -TypeHandlerVersion "2.0" `
-            -Location $vm.Location | Out-Null
-
-        Write-Log "Entra ID Join Extension installiert" -Level SUCCESS
-
-        # Schritt 4: VM neustarten für Domain Join
-        Write-Log "Starte $VMName neu für Domain Join..." -Level INFO
-        Restart-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName | Out-Null
 
         Write-Log "Session Host $VMName erfolgreich registriert und Entra ID joined" -Level SUCCESS
         return $true
