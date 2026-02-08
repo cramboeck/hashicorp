@@ -330,28 +330,32 @@ function Register-AVDSessionHost {
             return $true
         }
 
-        # AVD Agent Installation via Custom Script Extension
+        # AVD Agent Installation via Run Command
         $scriptContent = @"
-`$RegistrationToken = '$RegistrationToken'
+New-Item -Path 'C:\Temp' -ItemType Directory -Force | Out-Null
+
 `$BootstrapperUrl = 'https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrmXv'
 `$AgentUrl = 'https://query.prod.cms.rt.microsoft.com/cms/api/am/binary/RWrxrH'
 
-# Download und Installation
-Invoke-WebRequest -Uri `$BootstrapperUrl -OutFile 'C:\Temp\AVDBootstrapper.exe'
-Invoke-WebRequest -Uri `$AgentUrl -OutFile 'C:\Temp\AVDAgent.exe'
+# Download
+Invoke-WebRequest -Uri `$BootstrapperUrl -OutFile 'C:\Temp\AVDBootstrapper.msi' -UseBasicParsing
+Invoke-WebRequest -Uri `$AgentUrl -OutFile 'C:\Temp\AVDAgent.msi' -UseBasicParsing
 
-Start-Process -FilePath 'C:\Temp\AVDBootstrapper.exe' -ArgumentList "/quiet /norestart" -Wait
-Start-Process -FilePath 'C:\Temp\AVDAgent.exe' -ArgumentList "/quiet /norestart RegistrationToken=`$RegistrationToken" -Wait
+# Bootstrapper installieren
+Start-Process msiexec.exe -ArgumentList '/i C:\Temp\AVDBootstrapper.msi /quiet /norestart' -Wait
+
+# Agent mit Registration Token installieren
+Start-Process msiexec.exe -ArgumentList '/i C:\Temp\AVDAgent.msi /quiet /norestart REGISTRATIONTOKEN=$RegistrationToken' -Wait
+
+Write-Host 'AVD Agent Installation abgeschlossen'
 "@
 
         $vm = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $VMName
 
-        Set-AzVMCustomScriptExtension -ResourceGroupName $ResourceGroupName `
+        Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName `
             -VMName $VMName `
-            -Name "InstallAVDAgent" `
-            -FileUri @() `
-            -Run $scriptContent `
-            -Location $vm.Location | Out-Null
+            -CommandId 'RunPowerShellScript' `
+            -ScriptString $scriptContent | Out-Null
 
         Write-Log "Session Host $VMName erfolgreich registriert" -Level SUCCESS
         return $true
