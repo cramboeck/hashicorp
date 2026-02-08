@@ -50,7 +50,10 @@
     Vollständige Subnet Resource ID. Wenn nicht angegeben, wird automatisch ein VNet gesucht.
 
 .PARAMETER VNetName
-    Name des VNets (optional, wird mit SubnetName kombiniert)
+    Name des VNets (optional, wird mit VNetResourceGroupName und SubnetName kombiniert)
+
+.PARAMETER VNetResourceGroupName
+    Resource Group des VNets (optional, falls VNet in anderer RG als Host Pool liegt)
 
 .PARAMETER SubnetName
     Name des Subnets im VNet (default: default)
@@ -112,6 +115,9 @@ param(
 
     [Parameter(Mandatory = $false)]
     [string]$VNetName = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$VNetResourceGroupName = "",
 
     [Parameter(Mandatory = $false)]
     [string]$SubnetName = "default"
@@ -495,8 +501,10 @@ try {
         # Netzwerk-Konfiguration ermitteln
         if (-not $SubnetId) {
             if ($VNetName) {
-                Write-Log "Ermittle Subnet ID aus VNet '$VNetName', Subnet '$SubnetName'..." -Level INFO
-                $vnet = Get-AzVirtualNetwork -ResourceGroupName $ResourceGroupName -Name $VNetName -ErrorAction SilentlyContinue
+                # VNet Resource Group bestimmen (falls angegeben, sonst gleiche wie Host Pool)
+                $vnetRG = if ($VNetResourceGroupName) { $VNetResourceGroupName } else { $ResourceGroupName }
+                Write-Log "Ermittle Subnet ID aus VNet '$VNetName' in RG '$vnetRG', Subnet '$SubnetName'..." -Level INFO
+                $vnet = Get-AzVirtualNetwork -ResourceGroupName $vnetRG -Name $VNetName -ErrorAction SilentlyContinue
                 if ($vnet) {
                     $subnet = $vnet.Subnets | Where-Object { $_.Name -eq $SubnetName }
                     if ($subnet) {
@@ -505,7 +513,7 @@ try {
                 }
             }
 
-            # Fallback: VNet in der Resource Group suchen
+            # Fallback 1: VNet in der Host Pool Resource Group suchen
             if (-not $SubnetId) {
                 Write-Log "Suche VNet in Resource Group $ResourceGroupName..." -Level INFO
                 $vnets = Get-AzVirtualNetwork -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue
@@ -514,8 +522,20 @@ try {
                     $subnet = $vnet.Subnets | Select-Object -First 1
                     $SubnetId = $subnet.Id
                     Write-Log "Verwende VNet '$($vnet.Name)', Subnet '$($subnet.Name)'" -Level INFO
+                }
+            }
+
+            # Fallback 2: VNet in der gesamten Subscription suchen
+            if (-not $SubnetId) {
+                Write-Log "Suche VNet in gesamter Subscription..." -Level INFO
+                $vnets = Get-AzVirtualNetwork -ErrorAction SilentlyContinue
+                if ($vnets) {
+                    $vnet = $vnets | Select-Object -First 1
+                    $subnet = $vnet.Subnets | Select-Object -First 1
+                    $SubnetId = $subnet.Id
+                    Write-Log "Verwende VNet '$($vnet.Name)' aus RG '$($vnet.ResourceGroupName)', Subnet '$($subnet.Name)'" -Level INFO
                 } else {
-                    throw "Kein VNet gefunden in Resource Group $ResourceGroupName. Bitte VNetName oder SubnetId angeben."
+                    throw "Kein VNet gefunden in der Subscription. Bitte SubnetId angeben."
                 }
             }
         }
